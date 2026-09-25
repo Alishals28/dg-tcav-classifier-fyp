@@ -1,0 +1,52 @@
+experiment:
+  name: medicalnet_resnet18
+  seed: 42
+  output_dir: outputs
+  smoke_test: false
+
+data:
+  manifest_path: data/cohort_a_baseline_manifest.csv
+  splits_path: data/cohort_a_splits.json
+  volume_dir: data/preprocessed
+  file_pattern: "{subject_id}.nii.gz"
+  expected_shape: [91, 109, 91]
+  expected_spacing: [2.0, 2.0, 2.0]
+  spacing_tolerance: 0.05
+  orientation: RAS
+  normalization: minmax
+  expected_split_sizes: {train: 1134, val: 242, test: 247}
+  preprocessing_confirmed: false
+  reference_image: null  # Exact template grid supplied by the preprocessing teammate.
+
+model:
+  num_classes: 4
+  pretrained: false
+  pretrained_checkpoint: null
+  base_channels: 64
+  shortcut: A
+
+augmentation:
+  enabled: false
+  degrees: 5
+  translation_mm: 2
+  scales: 0.03
+  noise_std: 0.01
+
+training:
+  epochs: 50
+  batch_size: 4
+  num_workers: 2
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  min_learning_rate: 0.000001
+  weighted_loss: true
+  early_stopping_patience: 10
+  selection_metric: macro_f1
+  mixed_precision: true
+  gradient_clip_norm: 1.0
+  device: auto
+
+evaluation:
+  batch_size: 4
+  num_workers: 2
+  bootstrap_samples: 1000

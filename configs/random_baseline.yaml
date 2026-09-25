@@ -1,0 +1,7 @@
+extends: kaggle.yaml
+experiment:
+  name: random_resnet18_weighted_ce
+model:
+  pretrained: false
+  pretrained_checkpoint: null
+# Same loss and augmentation as MedicalNet: isolate initialization.

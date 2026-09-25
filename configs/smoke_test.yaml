@@ -1,0 +1,33 @@
+extends: base.yaml
+
+experiment:
+  name: smoke_test
+  output_dir: outputs
+  smoke_test: true
+
+data:
+  manifest_path: outputs/synthetic/manifest.csv
+  splits_path: outputs/synthetic/splits.json
+  volume_dir: outputs/synthetic/volumes
+  expected_shape: [16, 16, 16]
+  expected_split_sizes: {train: 8, val: 4, test: 4}
+
+model:
+  pretrained: false
+  base_channels: 8
+
+augmentation:
+  enabled: false
+
+training:
+  epochs: 2
+  batch_size: 2
+  num_workers: 0
+  early_stopping_patience: 2
+  mixed_precision: false
+  device: cpu
+
+evaluation:
+  batch_size: 2
+  num_workers: 0
+  bootstrap_samples: 20
