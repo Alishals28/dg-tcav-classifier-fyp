@@ -1,0 +1,13 @@
+extends: base.yaml
+
+experiment:
+  output_dir: /kaggle/working/outputs
+
+data:
+  manifest_path: /kaggle/input/dg-tcav-cohort-a/cohort_a_baseline_manifest.csv
+  splits_path: /kaggle/input/dg-tcav-cohort-a/cohort_a_splits.json
+  volume_dir: /kaggle/input/dg-tcav-cohort-a/preprocessed
+
+model:
+  pretrained: true
+  pretrained_checkpoint: /kaggle/input/medicalnet-weights/resnet_18_23dataset.pth
