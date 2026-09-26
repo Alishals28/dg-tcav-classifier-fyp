@@ -1,4 +1,4 @@
-"""Strict, reported transfer of the MedicalNet ResNet-18 backbone."""
+"""Load MedicalNet backbone weights and report checkpoint compatibility."""
 
 import json
 from pathlib import Path
@@ -9,10 +9,10 @@ from .dataset import sha256_file
 
 
 def load_medicalnet(model, path, report_path=None):
-    """Load all backbone tensors; allow only obsolete batch counters to be absent.
+    """Load the backbone, allowing legacy BatchNorm batch counters to be absent.
 
-    Segmentation/classification heads are ignored. A partial backbone is a failed
-    load, not a successful transfer-learning experiment. Only use trusted weights.
+    Ignore the original head; reject missing or incompatible backbone tensors.
+    The supplied checkpoint should come from a trusted source.
     """
     if model.base_channels != 64 or model.shortcut != "A":
         raise ValueError(

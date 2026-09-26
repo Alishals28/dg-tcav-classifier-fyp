@@ -1,52 +1,61 @@
-# Implementation verification — 2026-09-25
+# Test record
 
-This is software verification on artificial data, not a report of ADNI results.
+The initial checks below ran on 25 September 2026. They used artificial images;
+the real ADNI dataset and distributed MedicalNet checkpoint have not been tested.
 
-## Checks actually performed
+## Results
 
-- Editable package installation succeeded; `pip check` reported no broken requirements.
-- `python -m pytest`: 41 tests passed on CPU. No tests skipped.
-- Ruff checks/formatting, Python compile checks, and git whitespace checks passed.
-- Notebook JSON passed nbformat schema validation.
-- Synthetic CLI training completed two epochs and wrote best/last checkpoints,
-  history, validation predictions, configuration, and learning curves.
-- Integration tests exercised evaluation metrics, figures, predictions, feature
-  export, refused result overwrites, and checkpoint/config mismatch rejection.
-- Epoch-boundary CPU resume reproduced uninterrupted model-state tensors exactly
-  in the controlled two-epoch test (num_workers=0).
-- Tiny-overfit CLI on eight artificial training examples reached 100% training
-  accuracy in eval mode after 11 epochs. This is a debugging result only.
-- Full-width model at input [1,1,91,109,91] completed forward/backward on CPU,
-  returned [1,4] logits and [1,512] pooled features, with finite stem gradients.
-  Model parameter count: 32,988,228.
-- Backbone layer-4 outputs matched Tencent/MedicalNet's implementation exactly
-  for the same weights and a controlled 16³ input. Reference source commit:
-  `20f76aaab5cac8056eaf50b79ed97c09dbfbd3bd`. This validates architecture behavior,
-  not loading of the real distributed pretrained checkpoint.
-- An incomplete real-training config correctly stopped at the preprocessing gate.
+| Check | Result |
+|---|---|
+| Installation | Editable install succeeded; pip check found no broken requirements |
+| Automated tests | 41 passed on CPU, none skipped |
+| Static checks | Ruff, Python compilation and Git whitespace checks passed |
+| Notebook | nbformat schema validation passed |
+| Synthetic CLI training | Two epochs; checkpoints, history, predictions and plots written |
+| Resume | Interrupted and uninterrupted two-epoch CPU runs produced identical model tensors; num_workers=0 |
+| Tiny overfit | Eight synthetic training images reached 100% training accuracy in eval mode after 11 epochs |
+| Full-width input | Forward/backward passed at [1,1,91,109,91]; finite stem gradients |
+| Model output | Four logits, 512 pooled features; 32,988,228 parameters |
+| Architecture comparison | Layer-4 output matched the upstream MedicalNet implementation with identical weights and a controlled 16³ input |
+| Preprocessing requirement | Incomplete real-training configuration was rejected |
 
-Test categories: partition coverage/overlap/duplicates; invalid labels/IDs;
-missing/ambiguous volumes; shape, spacing, units, orientation, affine, NaN/Inf,
-empty/constant rejection; normalization; train-only augmentation; feature/gradient
-access; strict synthetic MedicalNet-state loading; known-answer metrics;
-weighted loss accounting; training, resume, evaluation, and export.
+Integration tests also cover evaluation reports, figures, feature export,
+checkpoint/config mismatches, and refusal to overwrite evaluation results.
+Data tests cover partition overlap/coverage, invalid labels/IDs, missing or
+ambiguous files, geometry, invalid intensities, normalization and augmentation.
+Metric tests use known answers and check weighted loss across batch sizes.
 
-## Environment used
+The architecture comparison used MedicalNet source commit
+`20f76aaab5cac8056eaf50b79ed97c09dbfbd3bd`. It confirms backbone behavior, not
+successful loading of the actual pretrained file.
+
+## Environment
 
 Python 3.12.14; PyTorch 2.14.0+cpu; NumPy 2.3.5; pandas 2.2.3;
 NiBabel 5.4.2; scikit-learn 1.8.0; TorchIO 0.23.1; PyYAML 6.0.3;
-Matplotlib 3.10.8; pytest 8.4.2. No CUDA device was available here.
-Every real run also writes its own installed package versions and Git commit.
+Matplotlib 3.10.8; pytest 8.4.2. No CUDA device was available.
+Each training run records its own package versions and Git commit.
 
-## Not yet verified — required before results can be reported
+## Documentation revision — 26 September 2026
 
-1. Receipt/QC of all real preprocessed Cohort A volumes and their exact template grid.
-2. Audit against the actual manifest and fixed split JSON, preserving image-ID provenance.
-3. Full loading of the actual trusted MedicalNet ResNet-18 checkpoint, with report/hash.
-4. Tiny-overfit on model-ready training examples (no test subjects).
-5. Real-data GPU smoke run: CUDA/AMP behavior, memory, BatchNorm behavior, I/O and epoch time.
-6. Full experiments, frozen model selection, and held-out evaluation.
+Ruff lint/format checks, Python compilation, notebook schema validation and Git
+whitespace checks passed. All 13 edited Python files have identical syntax trees
+after excluding docstrings, confirming that their executable logic is unchanged.
+The notebook now clones the default branch containing the merged implementation.
 
-The Kaggle notebook has been schema-validated, not executed inside Kaggle.
-CUDA determinism and exact cross-device/cross-version resume are not guaranteed.
-No ADNI scans were used in the tests and no clinical performance claim is made.
+The full test suite was not rerun for this revision because the current runtime
+lacks the training dependencies, including PyTorch. The 41-test result above is
+from the initial implementation checks.
+
+## Remaining checks
+
+1. Receive the processed Cohort A scans, exact reference grid and preprocessing QC.
+2. Audit the actual manifest, original splits and scan/image-ID correspondence.
+3. Load the trusted MedicalNet checkpoint and inspect its loading report.
+4. Run the overfit check on a small set of model-ready training scans.
+5. Run a short Kaggle GPU trial to check AMP, memory, BatchNorm, I/O and epoch time.
+6. Train the planned experiments, select on validation and evaluate the frozen model.
+
+The Kaggle notebook has not been executed inside Kaggle. GPU determinism and
+cross-device/version resume remain unverified. Synthetic results provide no
+estimate of disease-classification accuracy.

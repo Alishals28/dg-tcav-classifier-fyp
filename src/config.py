@@ -132,7 +132,7 @@ def _validate_config(config: dict[str, Any]) -> None:
 
 
 def require_preprocessing(config: dict[str, Any]) -> None:
-    """Fail before scientific training unless the preprocessing handoff is explicit."""
+    """Require preprocessing confirmation and the agreed input grid for real-data runs."""
     if config["experiment"].get("smoke_test", False):
         return
     data = config["data"]

@@ -1,4 +1,4 @@
-"""CLI for training and validation only. Test evaluation lives in src.evaluate."""
+"""Train on Cohort A and select a checkpoint using validation macro-F1."""
 
 import argparse
 import json
@@ -28,7 +28,7 @@ def write_json(path, value):
 
 
 def save_checkpoint(path, state):
-    """Replace only this run's checkpoint atomically to avoid partially written files."""
+    """Write to a temporary file so an interrupted save leaves the previous checkpoint intact."""
     path = Path(path)
     temporary = path.with_suffix(".tmp")
     torch.save(state, temporary)
@@ -36,6 +36,7 @@ def save_checkpoint(path, state):
 
 
 def rng_state(generator):
+    """Capture random states needed to resume at an epoch boundary."""
     numpy_state = np.random.get_state()
     return {
         "python": random.getstate(),
@@ -53,6 +54,7 @@ def rng_state(generator):
 
 
 def restore_rng(state, generator):
+    """Restore the saved random streams, including training-batch shuffling."""
     random.setstate(state["python"])
     torch.set_rng_state(state["torch"])
     n = state["numpy"]
@@ -63,7 +65,7 @@ def restore_rng(state, generator):
 
 
 def train(config, resume=None, stop_after_epoch=None):
-    """Fit on train; select on val. Return the unique output directory."""
+    """Run training and validation, returning the run's output directory."""
     if stop_after_epoch is not None and stop_after_epoch < 1:
         raise ValueError("stop_after_epoch must be positive")
     require_preprocessing(config)
@@ -92,7 +94,7 @@ def train(config, resume=None, stop_after_epoch=None):
         (run_dir / "config.yaml").write_text(yaml.safe_dump(config, sort_keys=False))
         save_environment(run_dir / "environment.json")
 
-    # Validate metadata for all splits, but never load test images in the training command.
+    # Check full split membership while keeping test images out of training.
     index = build_index(config["data"], resolve_splits=("train", "val"))
     audit = audit_dataset(index, config["data"], splits=("train", "val"))
     if state is not None and audit != state["data_audit"]:
@@ -140,6 +142,7 @@ def train(config, resume=None, stop_after_epoch=None):
         "cuda", enabled=settings["mixed_precision"] and device.type == "cuda"
     )
     start, best, bad_epochs, history = 0, -1.0, 0, []
+    # Restore RNG last: constructing the model above consumes random numbers.
     if state is not None:
         model.load_state_dict(state["model_state_dict"], strict=True)
         optimizer.load_state_dict(state["optimizer_state_dict"])
@@ -175,6 +178,7 @@ def train(config, resume=None, stop_after_epoch=None):
         validation, predictions = run_epoch(model, val_loader, device, criterion)
         score = validation["macro_f1"]
         improved = score > best
+        # A tied score keeps the earlier checkpoint and counts toward patience.
         best, bad_epochs = (score, 0) if improved else (best, bad_epochs + 1)
         scheduler.step()
         row = {
@@ -207,6 +211,7 @@ def train(config, resume=None, stop_after_epoch=None):
             "data_audit": audit,
         }
         save_checkpoint(run_dir / "last.pt", snapshot)
+        # Keep the selected model as well as the latest state needed for resume.
         if improved:
             save_checkpoint(run_dir / "best.pt", snapshot)
             pd.DataFrame(predictions).to_csv(

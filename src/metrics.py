@@ -1,4 +1,4 @@
-"""Fixed four-class metrics with explicit handling of undefined ROC-AUC."""
+"""Four-class metrics, subject bootstrap intervals and pairwise summaries."""
 
 import numpy as np
 from sklearn.metrics import (
@@ -12,7 +12,7 @@ from .constants import LABEL_TO_INDEX
 
 
 def classification_metrics(labels, probabilities):
-    """Return JSON-safe metrics; unsupported classes yield null AUC rather than a fake zero."""
+    """Return metrics with None for AUCs that lack positive or negative examples."""
     labels, probabilities = np.asarray(labels), np.asarray(probabilities)
     if labels.size == 0 or probabilities.shape != (labels.size, 4):
         raise ValueError("Expected nonempty labels and an N x 4 probability matrix")
@@ -62,10 +62,10 @@ def classification_metrics(labels, probabilities):
 
 
 def bootstrap_intervals(labels, probabilities, samples=1000, seed=42):
-    """Class-stratified subject bootstrap, conditional on this one fitted model.
+    """Estimate 95% intervals by resampling subjects within each class.
 
-    Cohort A has one scan per subject. Stratification fixes observed class counts;
-    these intervals do not measure variability across training seeds.
+    Cohort A has one scan per subject. Stratification fixes observed class counts.
+    These intervals describe the fitted model, not variability across training seeds.
     """
     rng = np.random.default_rng(seed)
     labels, probabilities = np.asarray(labels), np.asarray(probabilities)

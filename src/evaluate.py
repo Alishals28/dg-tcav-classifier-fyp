@@ -1,4 +1,4 @@
-"""Explicit held-out evaluation of a frozen checkpoint; never used for model selection."""
+"""Evaluate a saved checkpoint on validation or held-out test subjects."""
 
 import argparse
 from pathlib import Path
@@ -17,7 +17,7 @@ from .train import write_json
 
 
 def load_fitted_model(checkpoint_path, config, device):
-    """Keep model/preprocessing semantics fixed, allowing deployment paths to change."""
+    """Load a fitted model after checking architecture, preprocessing and dataset identity."""
     require_preprocessing(config)
     state = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     if state["label_mapping"] != LABEL_TO_INDEX:

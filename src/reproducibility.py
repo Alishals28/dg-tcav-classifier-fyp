@@ -27,7 +27,7 @@ def set_seed(seed: int, deterministic: bool = True) -> None:
         torch.backends.cudnn.benchmark = False
         os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", ":4096:8")
         # Some CUDA pooling kernels lack deterministic backward implementations.
-        # Surface that limitation rather than promising cross-hardware identity.
+        # Warn on those operations while allowing the run to continue.
         torch.use_deterministic_algorithms(True, warn_only=True)
 
 

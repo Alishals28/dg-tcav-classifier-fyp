@@ -1,4 +1,4 @@
-"""Generate a tiny artificial cohort solely for software tests, never clinical results."""
+"""Generate a small artificial MRI dataset for software tests."""
 
 import argparse
 import json
@@ -24,7 +24,7 @@ def make_synthetic(output, shape=(16, 16, 16)):
             array[2:-2, 2:-2, 2:-2] = rng.uniform(
                 0.1, 0.3, size=tuple(s - 4 for s in shape)
             )
-            # An artificial spatial cue makes this useful for an engineering overfit test.
+            # Give each class a spatial cue that the overfit test can learn.
             start = 2 + label * 2
             array[start : start + 2, 4:12, 4:12] += 1
             image = nib.Nifti1Image(array, np.diag([2.0, 2.0, 2.0, 1.0]))

@@ -1,4 +1,4 @@
-"""Fixed subject splits and model-ready NIfTI loading; no registration or skull stripping."""
+"""Join the baseline manifest to fixed splits and load preprocessed NIfTI volumes."""
 
 from __future__ import annotations
 
@@ -24,10 +24,10 @@ def sha256_file(path):
 
 
 def build_index(data_config, resolve_splits=SPLIT_NAMES):
-    """Validate the entire partition definition; resolve images only for requested splits.
+    """Check split membership and resolve images for the requested partitions.
 
     A filename template may contain {subject_id} and {image_id}, plus glob wildcards.
-    Zero or multiple matches are errors: choosing the first scan would hide ambiguity.
+    Require exactly one match so an ambiguous scan cannot be selected accidentally.
     """
     frame = pd.read_csv(data_config["manifest_path"], dtype=str, keep_default_na=False)
     missing = REQUIRED_MANIFEST_COLUMNS - set(frame.columns)
@@ -97,10 +97,10 @@ def build_index(data_config, resolve_splits=SPLIT_NAMES):
 
 
 def load_volume(path, data_config):
-    """Validate geometry and normalize foreground values, preserving zero background.
+    """Check the image grid and normalize nonzero voxels, preserving zero background.
 
-    Nonzero foreground is only a normalization mask; it does not establish brain extraction.
-    Geometry matching also does not prove anatomical registration. External visual QC is required.
+    The foreground mask is for normalization, not brain extraction.
+    Anatomical alignment and skull stripping require the preprocessing team's QC.
     """
     image = nib.load(str(path))
     if image.shape != tuple(data_config["expected_shape"]):
@@ -147,7 +147,7 @@ def load_volume(path, data_config):
 
 
 class MRIDataset(Dataset):
-    """One MRI and manifest label per subject; augmentation is strictly train-only."""
+    """Load one MRI per subject, with optional augmentation on training images."""
 
     def __init__(self, index, split, data_config, transform=None):
         if split not in SPLIT_NAMES:
@@ -175,7 +175,7 @@ class MRIDataset(Dataset):
 
 
 def audit_dataset(index, data_config, splits=SPLIT_NAMES):
-    """Load every requested image and record failures and content hashes without skipping them."""
+    """Inspect each requested image and collect failures and file hashes in an audit report."""
     report = {
         "counts": index.groupby("split").size().to_dict(),
         "class_counts": {
