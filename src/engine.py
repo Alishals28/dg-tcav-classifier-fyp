@@ -1,4 +1,4 @@
-"""Shared training/evaluation loop, weighted-loss accounting, and data-loader setup."""
+"""Data loaders, class weights and the epoch loop shared by training and evaluation."""
 
 import random
 
@@ -54,10 +54,10 @@ def make_loader(index, split, config, generator=None):
 def run_epoch(
     model, loader, device, criterion, optimizer=None, scaler=None, clip_norm=0.0
 ):
-    """Train or evaluate one epoch and retain subject-aligned prediction records.
+    """Return epoch metrics and predictions with their subject IDs.
 
-    Weighted CE's mean denominator is the sum of target weights, not batch size.
-    Epoch loss accumulates that same denominator across batches.
+    Weighted cross-entropy divides by the sum of target-class weights.
+    Accumulate that denominator across batches when reporting epoch loss.
     """
     training = optimizer is not None
     model.train(training)
@@ -81,6 +81,7 @@ def run_epoch(
             )
         if training:
             scaler.scale(loss).backward()
+            # Clip the actual gradients, after undoing AMP's loss scaling.
             scaler.unscale_(optimizer)
             if clip_norm > 0:
                 nn.utils.clip_grad_norm_(

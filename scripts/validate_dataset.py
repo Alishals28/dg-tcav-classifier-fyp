@@ -1,4 +1,4 @@
-"""Check the preprocessing handoff and scan integrity without modifying any input."""
+"""Check preprocessing requirements and write a scan-integrity report."""
 
 import argparse
 from pathlib import Path

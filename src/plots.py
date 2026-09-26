@@ -1,4 +1,4 @@
-"""Non-interactive figures with explicit class order and undefined-curve handling."""
+"""Save learning curves, confusion matrices and per-class ROC/PR plots."""
 
 import matplotlib
 

@@ -1,4 +1,4 @@
-"""Memorize a balanced train-only subset; this is a debugging check, not evaluation."""
+"""Check whether the model can memorize a small, balanced subset of training scans."""
 
 import argparse
 from copy import deepcopy

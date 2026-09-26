@@ -1,54 +1,53 @@
-# DG-TCAV: Cohort A MRI classifier
+# DG-TCAV classifier
 
-Four-class CN / EMCI / LMCI / AD classification with a MedicalNet-compatible 3D
-ResNet-18. Classifier only: no skull stripping, registration, diffusion, or TCAV
-scores. No patient scans or real experimental results are included.
+Four-class classification of baseline ADNI T1 MRI: CN, EMCI, LMCI, and AD.
+The model uses a MedicalNet-compatible 3D ResNet-18 backbone with a new
+classification head. Preprocessing and the diffusion model are separate work.
 
-## Status and input dependency
+The implementation has passed CPU tests on synthetic data. Real-data training
+still requires the preprocessing outputs, the actual MedicalNet checkpoint,
+and a short Kaggle GPU run. See [test results](docs/VERIFICATION.md).
 
-The code implements fixed-split loading, training, resume, evaluation, plots, and
-feature export. Synthetic tests verify software behavior, not clinical accuracy
-or the actual pretrained checkpoint. Real training requires the preprocessing
-teammate's QC-approved volumes and the exact reference image used for their grid.
-Native-space images are never silently resized or registered by this repository.
+## Setup
 
-## Installation and software check
-
-Python 3.10+, from the repository root. Tests do not require a GPU.
+Use Python 3.10 or newer. Run these commands from the repository root:
 
 ```bash
+git clone https://github.com/Alishals28/dg-tcav-classifier-fyp.git
+cd dg-tcav-classifier-fyp
 pip install -r requirements.txt
 pip install -e . --no-deps
 python -m pytest
-python -m scripts.make_synthetic
-OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 python -m src.train --config configs/smoke_test.yaml
 ```
 
-On Windows, omit the environment-variable prefix or set it through PowerShell.
-Synthetic generation refuses to overwrite a directory; use a new `--output` and
-update the config to regenerate. Copy the run path printed by training below.
+Kaggle users can start with [notebooks/train.ipynb](notebooks/train.ipynb).
+Attach the preprocessed scans and pretrained weights as private inputs. Keep
+patient data, subject manifests, credentials, and checkpoints out of this public
+repository. Installation may need internet access; retain Kaggle's GPU-compatible
+PyTorch installation if it meets the requirements.
 
-```bash
-python -m src.evaluate --config configs/smoke_test.yaml --checkpoint outputs/<run>/best.pt --split val
-python -m src.export_activations --config configs/smoke_test.yaml --checkpoint outputs/<run>/best.pt --output outputs/smoke_features
-python -m scripts.tiny_overfit --config configs/smoke_test.yaml
-```
+## Required data
 
-Synthetic mode uses 16³ artificial volumes and reduced width. It is labeled in
-configs/results and must never be used for ADNI performance claims.
+The loader joins the baseline manifest to the existing subject split JSON.
 
-## Preprocessing handoff (not the classifier member's task)
+| Input | Required contents |
+|---|---|
+| Manifest CSV | subject_id, image_id, diagnosis, phase |
+| Split JSON | train: 1,134 subjects; val: 242; test: 247 |
+| Processed scans | One NIfTI per manifest record, 91×109×91 at 2 mm spacing |
+| Reference NIfTI | Exact template grid used by the preprocessing pipeline |
+| Preprocessing records | Image-ID mapping, software versions, QC and failed-scan list |
 
-Required: original manifest CSV (subject_id, image_id, diagnosis, phase), original
-split JSON (train, val, test), one processed NIfTI per record, exact reference
-NIfTI, and preprocessing software/version/QC/failure records. Preserve image IDs
-through processing, including when output filenames contain only subject IDs.
+The label mapping is CN=0, EMCI=1, LMCI=2, AD=3. The original split is preserved.
+Missing scans, duplicate subjects, overlapping splits, and ambiguous file matches
+stop the run. Any agreed exclusions must be recorded in revised manifests,
+splits, and expected counts.
 
-Planned counts: train=1134, val=242, test=247. Labels: CN=0, EMCI=1, LMCI=2, AD=3.
-No new split or silent exclusions are made. Resolve failed images with the team;
-any justified cohort revision requires documented manifest/split/config changes.
+The preprocessing member supplies skull-stripped, MNI-registered volumes.
+The loader checks shape, spacing, explicit mm units, orientation, affine and
+voxel values. Anatomical alignment and brain extraction still need visual QC.
 
-Edit the paths and settings in `configs/kaggle.yaml` after receiving the handoff:
+Update `configs/kaggle.yaml` when the files are available:
 
 ```yaml
 data:
@@ -62,141 +61,120 @@ data:
   preprocessing_confirmed: true
 ```
 
-These names/orientation are examples, not verified properties of delivered files.
-Set confirmation only after receiving QC. Match orientation to the agreed template.
-Inputs must be 91×109×91, 2 mm spacing, with explicit mm units and affine matching
-the exact reference grid. These checks do not prove skull stripping or anatomical
-registration. A screenshot alone cannot establish spacing.
+Use the delivered filenames and reference orientation; the values above are
+examples. Set `preprocessing_confirmed` only after receiving QC approval.
+The reference affine must match the scan grid. Paths are relative to the working
+directory unless absolute; `extends` paths are relative to the YAML file.
 
-Filename templates also support `{subject_id}_I{image_id}.nii.gz` or
-`{subject_id}/*.nii.gz`; zero or multiple matches fail. Labels come from the CSV,
-not filenames. A generic subject filename cannot itself prove the correct baseline
-scan was selected: that requires upstream image-ID provenance.
+Other supported patterns include `{subject_id}_I{image_id}.nii.gz` and
+`{subject_id}/*.nii.gz`. Exactly one file must match. Labels come from the CSV.
+Image IDs accept an optional `I` prefix. A subject-only filename relies on the
+preprocessing records to establish which baseline scan it represents.
 
-Normalization is per image, never fit across cohorts. Options: minmax (foreground
-[0,1]), zscore (foreground standardized), none (already normalized as agreed).
-Nonzero voxels define this foreground, not a brain segmentation. Zero background
-is preserved before augmentation. Avoid unintended double normalization.
+Choose `minmax` for foreground scaling to [0,1], `zscore` for foreground
+standardization, or `none` for images already normalized as agreed. Each image is
+normalized separately using nonzero voxels, with zero background preserved.
+This foreground mask is not a brain segmentation.
 
-## Kaggle launcher
+## Train on Kaggle
 
-Use `notebooks/train.ipynb`. Keep authorized ADNI inputs private; do not commit
-MRI, clinical tables, subject manifests, credentials, or large checkpoints to this
-public repository. Attach only data you are authorized to use.
+Audit the inputs and run the small training-set overfit check first:
 
 ```bash
-git clone --branch classifier-implementation https://github.com/Alishals28/dg-tcav-classifier-fyp.git
-cd dg-tcav-classifier-fyp
-pip install -r requirements.txt
-pip install -e . --no-deps
 python -m scripts.validate_dataset --config configs/kaggle.yaml
 python -m scripts.tiny_overfit --config configs/kaggle.yaml --output /kaggle/working/tiny_overfit
+```
+
+Next, copy the Kaggle config for a two-epoch trial. Set a separate experiment name
+and `training.epochs: 2`; keep `experiment.smoke_test: false` and the full-width
+model. Check memory use, output files, and epoch time before the full run.
+Batch size 4 is a starting point and may need adjustment.
+
+```bash
 python -m src.train --config configs/kaggle.yaml
 ```
 
-After merge, use main. Pin/record the commit for experiments and never pull code
-during a run. Installation may need internet; scans and trusted pretrained weights
-are attached inputs. Keep Kaggle's GPU-compatible PyTorch when it meets requirements.
+The main settings are weighted cross-entropy, AdamW at 1e-4, cosine decay,
+50 epochs maximum, and early stopping after 10 epochs without improved validation
+macro-F1. The [code walkthrough](docs/CODE_WALKTHROUGH.md) explains the loss,
+checkpoint selection, and experiment comparisons.
 
-Before full training, copy kaggle.yaml to a real-data smoke config with epochs=2,
-a separate experiment name, smoke_test=false, and full width. Do not use the
-synthetic config for real data. Measure epoch time/GPU memory; batch size 4 is an
-initial setting, not a guaranteed fit. No GPU quota/runtime is promised.
+Training opens only train/validation images. The audit's `--include-test-qc`
+option includes test image integrity checks without generating predictions.
+Record the Git commit used for each run and keep the code fixed while it runs.
 
-The audit normally opens train/validation only. `--include-test-qc` permits image
-integrity/geometry checks without model predictions. Training validates all split
-metadata but never resolves or loads test images.
-
-Resume using the original resolved config and last.pt:
+To resume, use that run's saved configuration and `last.pt`:
 
 ```bash
 python -m src.train --config /kaggle/working/outputs/<run>/config.yaml --resume /kaggle/working/outputs/<run>/last.pt
 ```
 
-Preserve/download the entire run directory before session expiry. Exact resume
-requires unchanged paths/config/data. Do not change the cosine horizon or resume
-from best.pt. Hyperparameter changes require a new experiment.
-Random generators/workers are seeded. Unsupported deterministic CUDA operations
-emit warnings; exact reproducibility across hardware/software is not guaranteed.
+Replace `<run>` with the directory printed by training. Resume requires unchanged
+configuration, paths and data. Changed settings or an extended schedule require a
+new experiment. Save the whole run directory before the Kaggle session ends.
 
-## Scientific protocol
+## Evaluate and export
 
-- MedicalNet ResNet-18: shortcut A, two blocks per stage, dilation 2/4 in layers
-  3/4, replacing its segmentation decoder with pooling and a four-logit head.
-- Supported official weights: resnet_18.pth or resnet_18_23dataset.pth, width 64,
-  shortcut A. Obtain trusted files from [MedicalNet](https://github.com/Tencent/MedicalNet).
-  All backbone tensors must match, except legacy BatchNorm batch counters. Head
-  tensors are ignored explicitly; unknown/backbone mismatches fail. A filename
-  alone does not establish origin. Checkpoints are loaded with weights_only=True.
-- Weighted cross-entropy uses N_train/(4*n_class_train). No weighted sampler is
-  also applied. Epoch loss uses the target-weight denominator, not batch size.
-- AdamW: lr=1e-4, decay=1e-4. Cosine annealing to 1e-6 over up to 50 epochs.
-  Early stopping patience=10; best checkpoint uses validation macro-F1. No implicit
-  warm-up/freezing schedule. All layers and BatchNorm are fine-tuned; small-batch
-  behavior must be checked. Single-device training.
-- Augmentation is off for the initial comparison. augmented.yaml enables small
-  TorchIO affine transforms in physical mm and Gaussian noise on training only.
-  No flips, arbitrary axis swaps, cropping, or elastic deformation.
-- random_baseline.yaml and kaggle.yaml hold loss/topology/augmentation constant,
-  changing initialization only. Random/unweighted versus pretrained/weighted
-  changes two factors and cannot isolate transfer learning's benefit.
-- Select settings on validation, then freeze the protocol before test access.
-  Additional seeds/ablations depend on compute, not promised accuracy targets.
-
-## Held-out evaluation
+After selecting the configuration on validation data, evaluate the held-out test
+set:
 
 ```bash
 python -m src.evaluate --config configs/kaggle.yaml --checkpoint /kaggle/working/outputs/<run>/best.pt --split test --confirm-final-test
 ```
 
-Default split is val. The test flag is a deliberate reminder, not a technical
-guarantee of one-time use. Results refuse overwrites. Never use test outcomes for
-tuning or choosing the most favorable seed.
+Evaluation defaults to validation. The test flag records an explicit choice; it
+does not enforce one-time access. Test results must not guide tuning or seed
+selection. Existing evaluation directories are not overwritten.
 
-Reports include accuracy, balanced accuracy, macro precision/recall/F1, macro OvR
-AUC, per-class metrics, multiclass Brier score, per-phase results, confusion matrices,
-ROC/PR plots, and subject-aligned probabilities. Missing-class AUC is null, not zero.
-Macro-F1 includes all four labels (zero division=0); balanced accuracy is null if
-any class is absent. Interpret per-phase metrics with their supports. With all
-classes present, balanced accuracy and macro recall are identical.
+Results include aggregate/per-class/per-phase metrics, bootstrap intervals,
+subject predictions and probabilities, confusion matrices, and ROC/PR curves.
+The walkthrough explains undefined metrics and the binary-subset summaries.
 
-95% CIs are class-stratified subject bootstraps for this fixed fitted model,
-conditional on observed class counts. They do not measure retraining/seed variability.
-Binary summaries separate four-class predictions on a subset from forced pairwise
-decisions; neither is a dedicated binary-trained classifier.
-
-## Outputs and TCAV handoff
-
-Runs save config, environment/package versions, data audit/input hashes, resolved
-index, model summary, history, learning curves, best.pt, last.pt, and best validation
-predictions/metrics. Pretrained runs also save a loading report. Evaluation has its
-own directory with checkpoint hash, reports, probabilities, and figures.
+For the TCAV stage:
 
 ```bash
 python -m src.export_activations --config configs/kaggle.yaml --checkpoint /kaggle/working/outputs/<run>/best.pt --split val --output /kaggle/working/features
 ```
 
-Exports pooled_features.npy ([N,512] for full width), subjects.csv, provenance.json.
-`--spatial` also exports per-subject layer-4 maps. Live model methods retain
-autograd; exported arrays do not. This is feature access, not CAV fitting or TCAV.
+This saves `pooled_features.npy` ([N,512]), `subjects.csv` and `provenance.json`.
+Add `--spatial` to save layer-4 maps. The code supports feature access; bottleneck
+selection and TCAV scoring remain separate. In particular, the final linear head
+has constant logit gradients at the pooled features, as explained in the walkthrough.
 
-**TCAV caution:** logits are linear in the final pooled vector, so their gradient
-there is constant across subjects. The same issue applies immediately before
-pooling. Standard sign-based logit TCAV at this point can be degenerate. The TCAV
-stage must justify an earlier nonlinear bottleneck or another explicit design;
-the exported 512-vector alone is not claimed to yield informative TCAV scores.
+## Test without MRI data
 
-## Code map
+```bash
+python -m scripts.make_synthetic
+OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 python -m src.train --config configs/smoke_test.yaml
+python -m scripts.tiny_overfit --config configs/smoke_test.yaml
+```
 
-| Files | Responsibility |
+On Windows, set those environment variables in PowerShell or omit the prefix.
+The synthetic config uses 16³ artificial images and reduced model width. Its
+results test the code, not disease classification. Generation refuses to overwrite
+its directory; use a new `--output` and update the config to regenerate.
+
+The same evaluation/export commands work with `configs/smoke_test.yaml` and the
+printed checkpoint path. Use validation for a routine software check.
+
+## Files
+
+| Location | Purpose |
 |---|---|
-| config.py, constants.py | Settings and class mapping |
-| dataset.py, transforms.py | Fixed-split indexing, checks, normalization, augmentation |
-| model.py, medicalnet.py | Backbone/head and strict pretrained loading |
-| engine.py, train.py | Epoch loop, selection, resume |
-| metrics.py, plots.py, evaluate.py | Results and figures |
-| export_activations.py | Features with subject alignment |
-| scripts/, tests/ | Audit, inspection, overfit and regression checks |
+| `configs/` | Base, Kaggle, random-initialization, augmentation and synthetic settings |
+| `src/dataset.py`, `transforms.py` | Indexing, image checks, normalization and augmentation |
+| `src/model.py`, `medicalnet.py` | Architecture and pretrained-weight loading |
+| `src/engine.py`, `train.py` | Epoch loop, checkpoints and resume |
+| `src/evaluate.py`, `metrics.py`, `plots.py` | Evaluation and figures |
+| `src/export_activations.py` | Feature export with subject mapping |
+| `src/config.py`, `constants.py`, `reproducibility.py` | Settings, labels and run metadata |
+| `scripts/`, `tests/` | Data audit, inspection, synthetic checks and automated tests |
 
-See [code walkthrough](docs/CODE_WALKTHROUGH.md), [verification evidence](docs/VERIFICATION.md),
-and [upstream attribution](THIRD_PARTY_NOTICES.md).
+Each run saves its configuration, package versions, input hashes, resolved index,
+class weights, model summary, history, learning curves, best/last checkpoints, and
+best validation predictions/metrics. Pretrained runs add a weight-loading report.
+Evaluation outputs include the checkpoint hash.
+
+[Code walkthrough](docs/CODE_WALKTHROUGH.md) ·
+[Test results](docs/VERIFICATION.md) ·
+[MedicalNet attribution](THIRD_PARTY_NOTICES.md)

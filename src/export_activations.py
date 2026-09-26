@@ -1,4 +1,4 @@
-"""Export pooled layer-4 representations with subject metadata, not TCAV scores."""
+"""Export pooled or spatial layer-4 features with the corresponding subject IDs."""
 
 import argparse
 from pathlib import Path
@@ -18,7 +18,7 @@ def export_features(config, checkpoint, output, split="val", spatial=False):
     device = choose_device(config["training"]["device"])
     model, _ = load_fitted_model(checkpoint, config, device)
     index = build_index(config["data"], resolve_splits=(split,))
-    # Exports are deterministic, even when selecting training subjects.
+    # Disable augmentation for exports from every split, including training.
     loader = torch.utils.data.DataLoader(
         MRIDataset(index, split, config["data"]),
         batch_size=config["evaluation"]["batch_size"],

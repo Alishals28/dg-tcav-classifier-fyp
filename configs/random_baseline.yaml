@@ -4,4 +4,4 @@ experiment:
 model:
   pretrained: false
   pretrained_checkpoint: null
-# Same loss and augmentation as MedicalNet: isolate initialization.
+# Keep loss and augmentation fixed so this comparison measures initialization.
