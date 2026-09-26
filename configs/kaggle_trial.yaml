@@ -1,0 +1,7 @@
+extends: kaggle.yaml
+
+experiment:
+  name: medicalnet_resnet18_trial
+
+training:
+  epochs: 2

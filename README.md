@@ -4,9 +4,10 @@ Four-class classification of baseline ADNI T1 MRI: CN, EMCI, LMCI, and AD.
 The model uses a MedicalNet-compatible 3D ResNet-18 backbone with a new
 classification head. Preprocessing and the diffusion model are separate work.
 
-The implementation has passed CPU tests on synthetic data. Real-data training
-still requires the preprocessing outputs, the actual MedicalNet checkpoint,
-and a short Kaggle GPU run. See [test results](docs/VERIFICATION.md).
+The implementation has passed CPU tests on synthetic data. The manifest and fixed
+subject splits have been checked, while real-data training still requires the
+preprocessing outputs, the actual MedicalNet checkpoint, and a short Kaggle GPU
+run. See the [data handoff and runbook](docs/HANDOFF_AND_RUNBOOK.md).
 
 ## Setup
 
@@ -85,10 +86,13 @@ python -m scripts.validate_dataset --config configs/kaggle.yaml
 python -m scripts.tiny_overfit --config configs/kaggle.yaml --output /kaggle/working/tiny_overfit
 ```
 
-Next, copy the Kaggle config for a two-epoch trial. Set a separate experiment name
-and `training.epochs: 2`; keep `experiment.smoke_test: false` and the full-width
-model. Check memory use, output files, and epoch time before the full run.
-Batch size 4 is a starting point and may need adjustment.
+Next, run the provided two-epoch, full-width trial. Check memory use, output files,
+MedicalNet loading and epoch time before the full run. Batch size 4 is a starting
+point and may need adjustment.
+
+```bash
+python -m src.train --config configs/kaggle_trial.yaml
+```
 
 ```bash
 python -m src.train --config configs/kaggle.yaml
@@ -176,5 +180,6 @@ best validation predictions/metrics. Pretrained runs add a weight-loading report
 Evaluation outputs include the checkpoint hash.
 
 [Code walkthrough](docs/CODE_WALKTHROUGH.md) ·
+[Data handoff and runbook](docs/HANDOFF_AND_RUNBOOK.md) ·
 [Test results](docs/VERIFICATION.md) ·
 [MedicalNet attribution](THIRD_PARTY_NOTICES.md)

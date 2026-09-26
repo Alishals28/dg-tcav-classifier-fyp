@@ -43,14 +43,26 @@ whitespace checks passed. All 13 edited Python files have identical syntax trees
 after excluding docstrings, confirming that their executable logic is unchanged.
 The notebook now clones the default branch containing the merged implementation.
 
-The full test suite was not rerun for this revision because the current runtime
-lacks the training dependencies, including PyTorch. The 41-test result above is
-from the initial implementation checks.
+The full test suite was rerun after installing the declared dependencies: all 41
+tests passed on CPU.
+
+## Input review — 26 September 2026
+
+The shared Cohort A manifest and split JSON were read directly. The manifest has
+1,623 unique subjects and 1,623 unique image IDs with no missing required values.
+The JSON contains 1,134 train, 242 validation and 247 test IDs; there is no overlap,
+and these IDs exactly cover the manifest. All four diagnoses occur in each split.
+
+One available baseline `MPRAGE.nii.gz` was inspected: shape 170×256×256, spacing
+1.2×1.0×1.0 mm, explicit millimetre units and RAS orientation. It does not satisfy
+the specified model grid, so it was not used as a processed classifier input.
+No completed preprocessed folder, reference image or MedicalNet checkpoint was
+found in the shared Drive folder at the time of review.
 
 ## Remaining checks
 
 1. Receive the processed Cohort A scans, exact reference grid and preprocessing QC.
-2. Audit the actual manifest, original splits and scan/image-ID correspondence.
+2. Audit scan/image-ID correspondence in the completed preprocessing output.
 3. Load the trusted MedicalNet checkpoint and inspect its loading report.
 4. Run the overfit check on a small set of model-ready training scans.
 5. Run a short Kaggle GPU trial to check AMP, memory, BatchNorm, I/O and epoch time.
