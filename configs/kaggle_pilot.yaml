@@ -1,0 +1,31 @@
+extends: base.yaml
+
+experiment:
+  name: pilot_resnet18_29scans
+  output_dir: /kaggle/working/outputs
+
+data:
+  manifest_path: /kaggle/input/dg-tcav-cohort-a-pilot/cohort_a_pilot_manifest.csv
+  splits_path: /kaggle/input/dg-tcav-cohort-a-pilot/cohort_a_pilot_splits.json
+  volume_dir: /kaggle/input/dg-tcav-cohort-a-pilot/preprocessed
+  file_pattern: "{subject_id}_preprocessed_mni152_2mm.nii.gz"
+  reference_image: /kaggle/input/dg-tcav-cohort-a-pilot/reference.nii.gz
+  preprocessing_confirmed: true
+  require_all_classes: false
+  expected_split_sizes: {train: 19, val: 5, test: 5}
+
+model:
+  pretrained: true
+  pretrained_checkpoint: /kaggle/input/medicalnet-weights/resnet_18_23dataset.pth
+
+training:
+  epochs: 5
+  batch_size: 4
+  num_workers: 2
+  mixed_precision: true
+  device: auto
+
+evaluation:
+  batch_size: 4
+  num_workers: 2
+  bootstrap_samples: 100

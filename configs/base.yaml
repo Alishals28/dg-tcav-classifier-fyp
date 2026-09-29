@@ -8,14 +8,14 @@ data:
   manifest_path: data/cohort_a_baseline_manifest.csv
   splits_path: data/cohort_a_splits.json
   volume_dir: data/preprocessed
-  file_pattern: "{subject_id}.nii.gz"
+  file_pattern: "{subject_id}_preprocessed_mni152_2mm.nii.gz"
   expected_shape: [91, 109, 91]
   expected_spacing: [2.0, 2.0, 2.0]
   spacing_tolerance: 0.05
   orientation: RAS
   normalization: minmax
   expected_split_sizes: {train: 1134, val: 242, test: 247}
-  preprocessing_confirmed: false
+  preprocessing_confirmed: true
   reference_image: null  # Exact template grid supplied by the preprocessing teammate.
 
 model:

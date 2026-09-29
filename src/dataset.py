@@ -67,9 +67,10 @@ def build_index(data_config, resolve_splits=SPLIT_NAMES):
         raise ValueError("Split subjects do not exactly cover the manifest")
     frame["split"] = frame.subject_id.map(membership)
     frame["label"] = frame.diagnosis.map(LABEL_TO_INDEX)
-    for split in SPLIT_NAMES:
-        if set(frame.loc[frame.split == split, "diagnosis"]) != set(LABEL_TO_INDEX):
-            raise ValueError(f"Primary {split} partition must contain all four classes")
+    if data_config.get("require_all_classes", True):
+        for split in SPLIT_NAMES:
+            if set(frame.loc[frame.split == split, "diagnosis"]) != set(LABEL_TO_INDEX):
+                raise ValueError(f"Primary {split} partition must contain all four classes")
     frame["path"] = ""
     root = Path(data_config["volume_dir"]).resolve()
     paths = set()
