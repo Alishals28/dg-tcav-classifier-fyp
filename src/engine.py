@@ -84,8 +84,10 @@ def run_epoch(
             # Clip the actual gradients, after undoing AMP's loss scaling.
             scaler.unscale_(optimizer)
             if clip_norm > 0:
+                # Under AMP, early steps can overflow; scaler.step skips them and
+                # lowers the scale. Without AMP a non-finite norm means divergence.
                 nn.utils.clip_grad_norm_(
-                    model.parameters(), clip_norm, error_if_nonfinite=True
+                    model.parameters(), clip_norm, error_if_nonfinite=not amp
                 )
             scaler.step(optimizer)
             scaler.update()
