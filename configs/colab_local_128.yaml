@@ -1,0 +1,6 @@
+extends: colab_preprocessed_128.yaml
+
+# Reads scans from a copy on the Colab VM disk instead of the mounted Drive.
+# Copy them first (see notebooks/train.ipynb); outputs still go to Drive.
+data:
+  volume_dir: /content/preprocessed_128

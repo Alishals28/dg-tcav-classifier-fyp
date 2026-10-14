@@ -72,18 +72,28 @@ these counts remain current.
 
 ## Audit and run
 
-Use `configs/colab_preprocessed_128.yaml`. It expects the Drive structure above,
-the supplied MNI reference and a trusted MedicalNet checkpoint. The initial batch
-size is 2 with mixed precision; evaluate memory and epoch time on the selected
-Colab GPU.
+Use `configs/colab_local_128.yaml`. It extends `configs/colab_preprocessed_128.yaml`
+(Drive structure above, supplied MNI reference) but reads scans from a copy on the
+Colab VM disk, because reading from the mounted Drive every epoch is slow. Outputs
+still go to Drive. Copy the scans after each runtime reset:
 
 ```bash
-python -m scripts.validate_dataset --config configs/colab_preprocessed_128.yaml
+mkdir -p /content/preprocessed_128
+rsync -a --include='*_preprocessed_128.nii.gz' --exclude='*' \
+  /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/preprocessed_128/ \
+  /content/preprocessed_128/
+```
+
+The initial batch size is 2 with mixed precision; evaluate memory and epoch time on
+the selected Colab GPU. Resume a run with the config it started with.
+
+```bash
+python -m scripts.validate_dataset --config configs/colab_local_128.yaml
 python -m scripts.tiny_overfit \
-  --config configs/colab_preprocessed_128.yaml \
+  --config configs/colab_local_128.yaml \
   --output /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs/tiny_overfit
-python -m src.train --config configs/colab_preprocessed_128.yaml --stop-after-epoch 2
-python -m src.train --config configs/colab_preprocessed_128.yaml
+python -m src.train --config configs/colab_local_128.yaml --stop-after-epoch 2
+python -m src.train --config configs/colab_local_128.yaml
 ```
 
 Training uses train and validation images only. Select the model using validation
@@ -91,7 +101,7 @@ results, freeze choices, then evaluate the held-out test split:
 
 ```bash
 python -m src.evaluate \
-  --config configs/colab_preprocessed_128.yaml \
+  --config configs/colab_local_128.yaml \
   --checkpoint PATH_TO_RUN/best.pt --split test --confirm-final-test
 ```
 

@@ -98,6 +98,7 @@ axis swaps, or elastic deformation.
 augmentation the same, changing only initialization. This isolates the effect of
 pretraining. Changing both initialization and class weighting would confound
 that comparison. `colab_preprocessed_128.yaml` supplies the Drive paths for Colab.
+`colab_local_128.yaml` extends it to read scans from a copy on the Colab VM disk.
 
 ## Training and checkpoints
 

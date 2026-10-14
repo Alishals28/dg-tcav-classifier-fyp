@@ -67,21 +67,33 @@ class counts by split. The training split must contain all four classes.
 
 ## Audit and train on Colab
 
-The Colab config points at the Drive folders above and starts with batch size 2
-and mixed precision. First audit the actual files and run the small overfit check:
+Reading scans straight from the mounted Drive is slow, so first copy them to the
+Colab VM disk (repeat after every runtime reset):
 
 ```bash
-python -m scripts.validate_dataset --config configs/colab_preprocessed_128.yaml
+mkdir -p /content/preprocessed_128
+rsync -a --include='*_preprocessed_128.nii.gz' --exclude='*' \
+  /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/preprocessed_128/ \
+  /content/preprocessed_128/
+```
+
+`configs/colab_local_128.yaml` reads scans from that copy and writes outputs to
+Drive; `configs/colab_preprocessed_128.yaml` reads directly from Drive. Both use
+batch size 2 and mixed precision. Resume a run with the config it started with.
+First audit the actual files and run the small overfit check:
+
+```bash
+python -m scripts.validate_dataset --config configs/colab_local_128.yaml
 python -m scripts.tiny_overfit \
-  --config configs/colab_preprocessed_128.yaml \
+  --config configs/colab_local_128.yaml \
   --output /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs/tiny_overfit
 ```
 
 If those checks pass, run a short trial and then the planned training run:
 
 ```bash
-python -m src.train --config configs/colab_preprocessed_128.yaml --stop-after-epoch 2
-python -m src.train --config configs/colab_preprocessed_128.yaml
+python -m src.train --config configs/colab_local_128.yaml --stop-after-epoch 2
+python -m src.train --config configs/colab_local_128.yaml
 ```
 
 Training uses train and validation images only. Choose the model using validation
@@ -89,7 +101,7 @@ results, freeze the choices, and then evaluate the held-out test set explicitly:
 
 ```bash
 python -m src.evaluate \
-  --config configs/colab_preprocessed_128.yaml \
+  --config configs/colab_local_128.yaml \
   --checkpoint PATH_TO_RUN/best.pt --split test --confirm-final-test
 ```
 
@@ -97,7 +109,7 @@ Export validation activations for later analysis:
 
 ```bash
 python -m src.export_activations \
-  --config configs/colab_preprocessed_128.yaml \
+  --config configs/colab_local_128.yaml \
   --checkpoint PATH_TO_RUN/best.pt --split val \
   --output /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs/features
 ```
