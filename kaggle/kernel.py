@@ -21,15 +21,17 @@ def run(command):
     subprocess.run(command, shell=True, check=True, cwd=REPO_DIR)
 
 
-def find_volume_dir():
-    scans = sorted(Path("/kaggle/input").rglob("*_preprocessed_128.nii.gz"))
+def find_scans():
+    """Return the scan folder and file pattern; Kaggle may store .nii.gz uploads as .nii."""
+    scans = sorted(Path("/kaggle/input").rglob("*_preprocessed_128.nii*"))
     if not scans:
-        sys.exit("No *_preprocessed_128.nii.gz under /kaggle/input; attach the scan dataset")
+        sys.exit("No *_preprocessed_128.nii[.gz] under /kaggle/input; attach the scan dataset")
     folders = {path.parent for path in scans}
-    if len(folders) != 1:
-        sys.exit(f"Scans are spread over several folders: {sorted(folders)}")
+    suffixes = {path.name.split("_preprocessed_128", 1)[1] for path in scans}
+    if len(folders) != 1 or len(suffixes) != 1:
+        sys.exit(f"Expected one folder and one extension: {sorted(folders)} {suffixes}")
     print(f"Found {len(scans)} scans in {next(iter(folders))}", flush=True)
-    return folders.pop()
+    return folders.pop(), "{subject_id}_preprocessed_128" + suffixes.pop()
 
 
 subprocess.run(
@@ -41,8 +43,10 @@ run("nvidia-smi || true")
 run("python -c \"import torch; print('torch', torch.__version__, 'cuda', torch.cuda.is_available())\"")
 
 config = REPO_DIR / "configs" / "kaggle_run.yaml"
+volume_dir, file_pattern = find_scans()
 config.write_text(
-    f"extends: kaggle_128.yaml\n\ndata:\n  volume_dir: {find_volume_dir()}\n"
+    "extends: kaggle_128.yaml\n\ndata:\n"
+    f"  volume_dir: {volume_dir}\n  file_pattern: \"{file_pattern}\"\n"
 )
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
