@@ -57,7 +57,8 @@ def build_index(data_config, resolve_splits=SPLIT_NAMES):
             raise ValueError(f"Invalid subject list for {split}")
         if len(ids) != len(set(ids)):
             raise ValueError(f"Duplicate subject in {split}")
-        if len(ids) != data_config["expected_split_sizes"][split]:
+        expected_size = data_config["expected_split_sizes"][split]
+        if expected_size is not None and len(ids) != expected_size:
             raise ValueError(f"Unexpected {split} size: {len(ids)}")
         for subject in ids:
             if subject in membership:
@@ -126,9 +127,32 @@ def load_volume(path, data_config):
     reference = data_config.get("reference_image")
     if reference:
         template = nib.load(str(reference))
-        if template.shape != image.shape or not np.allclose(
-            template.affine, image.affine, atol=1e-3, rtol=0
-        ):
+        mode = data_config.get("reference_grid_mode", "exact")
+        if mode == "exact":
+            matches_reference = template.shape == image.shape and np.allclose(
+                template.affine, image.affine, atol=1e-3, rtol=0
+            )
+        elif mode == "same_fov":
+            image_orientation = tuple(nib.aff2axcodes(image.affine))
+            template_orientation = tuple(nib.aff2axcodes(template.affine))
+            image_fov = np.asarray(image.shape[:3]) * np.asarray(
+                image.header.get_zooms()[:3]
+            )
+            template_fov = np.asarray(template.shape[:3]) * np.asarray(
+                template.header.get_zooms()[:3]
+            )
+            matches_reference = (
+                image_orientation == template_orientation
+                and np.allclose(
+                    image_fov,
+                    template_fov,
+                    atol=data_config.get("reference_fov_tolerance_mm", 0.1),
+                    rtol=0,
+                )
+            )
+        else:
+            raise ValueError(f"Unknown reference_grid_mode: {mode}")
+        if not matches_reference:
             raise ValueError(f"Volume does not match reference grid: {path}")
     array = image.get_fdata(dtype=np.float32)
     if not np.isfinite(array).all():

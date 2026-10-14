@@ -81,10 +81,10 @@ def _validate_config(config: dict[str, Any]) -> None:
             raise ValueError(f"{section}.{key} must be an integer >= {minimum}")
     sizes = config["data"]["expected_split_sizes"]
     if set(sizes) != {"train", "val", "test"} or any(
-        type(n) is not int or n < 1 for n in sizes.values()
+        n is not None and (type(n) is not int or n < 1) for n in sizes.values()
     ):
         raise ValueError(
-            "expected_split_sizes must contain positive integer train/val/test counts"
+            "expected_split_sizes values must be positive integers or null"
         )
 
     shape = config["data"].get("expected_shape")
@@ -125,6 +125,13 @@ def _validate_config(config: dict[str, Any]) -> None:
         raise ValueError("Invalid training parameter")
     if config["data"]["normalization"] not in {"none", "minmax", "zscore"}:
         raise ValueError("Unsupported normalization")
+    if config["data"].get("reference_grid_mode", "exact") not in {
+        "exact",
+        "same_fov",
+    }:
+        raise ValueError("reference_grid_mode must be exact or same_fov")
+    if config["data"].get("reference_fov_tolerance_mm", 0.1) < 0:
+        raise ValueError("reference_fov_tolerance_mm must be nonnegative")
     if config["model"]["shortcut"] not in {"A", "B"}:
         raise ValueError("shortcut must be A or B")
     if config["model"]["pretrained"] and not config["model"]["pretrained_checkpoint"]:
@@ -145,9 +152,7 @@ def require_preprocessing(config: dict[str, Any]) -> None:
         raise ValueError(
             "Scientific runs require the full-width model (base_channels=64)"
         )
-    if data["expected_shape"] != [91, 109, 91] or data["expected_spacing"] != [
-        2.0,
-        2.0,
-        2.0,
-    ]:
-        raise ValueError("Scientific input contract is 91x109x91 at 2 mm spacing")
+    # The declared shape and spacing are checked against every image and the
+    # reference image by dataset.load_volume. Keep the gate focused on requiring
+    # an explicitly confirmed preprocessing handoff instead of hard-coding one
+    # team's grid here; approved preprocessing pipelines can use other grids.

@@ -1,0 +1,18 @@
+extends: base.yaml
+
+experiment:
+  name: medicalnet_resnet18_preprocessed_128
+  output_dir: outputs/preprocessed_128
+
+model:
+  pretrained: true
+  pretrained_checkpoint: data/weights/resnet_18_23dataset.pth
+
+training:
+  batch_size: 2
+  num_workers: 2
+  mixed_precision: true
+
+evaluation:
+  batch_size: 2
+  num_workers: 2

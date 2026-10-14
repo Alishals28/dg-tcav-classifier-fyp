@@ -1,185 +1,132 @@
 # DG-TCAV classifier
 
-Four-class classification of baseline ADNI T1 MRI: CN, EMCI, LMCI, and AD.
-The model uses a MedicalNet-compatible 3D ResNet-18 backbone with a new
-classification head. Preprocessing and the diffusion model are separate work.
+Four-class classification of baseline ADNI T1 MRI scans: CN, EMCI, LMCI, and AD.
+The classifier is a MedicalNet-compatible 3D ResNet-18 with a four-class head.
+The real-data profile expects the project's preprocessed 128×128×128 NIfTI scans.
+MRI preprocessing and diffusion generation are separate project components.
 
-The implementation has passed CPU tests on synthetic data. The manifest and fixed
-subject splits have been checked, while real-data training still requires the
-preprocessing outputs, the actual MedicalNet checkpoint, and a short Kaggle GPU
-run. See the [data handoff and runbook](docs/HANDOFF_AND_RUNBOOK.md).
+This repository contains code and documentation, not the private scans, subject
+manifests, pretrained weights, or training outputs. Keep those files in Google
+Drive and out of Git. The current scan inventory and run guidance are in the
+[Colab runbook](docs/HANDOFF_AND_RUNBOOK.md); historical checks and limitations
+are recorded in [verification](docs/VERIFICATION.md).
 
-## Setup
+## Install
 
-Use Python 3.10 or newer. Run these commands from the repository root:
+Use Python 3.10 or newer. In Colab, preserve the runtime's compatible PyTorch
+installation if it already includes CUDA support.
 
 ```bash
-git clone https://github.com/Alishals28/dg-tcav-classifier-fyp.git
-cd dg-tcav-classifier-fyp
 pip install -r requirements.txt
 pip install -e . --no-deps
-python -m pytest
 ```
 
-Kaggle users can start with [notebooks/train.ipynb](notebooks/train.ipynb).
-Attach the preprocessed scans and pretrained weights as private inputs. Keep
-patient data, subject manifests, credentials, and checkpoints out of this public
-repository. Installation may need internet access; retain Kaggle's GPU-compatible
-PyTorch installation if it meets the requirements.
+## Data contract
 
-## Required data
-
-The loader joins the baseline manifest to the existing subject split JSON.
-
-| Input | Required contents |
+| Input | Requirement |
 |---|---|
-| Manifest CSV | subject_id, image_id, diagnosis, phase |
-| Split JSON | train: 1,134 subjects; val: 242; test: 247 |
-| Processed scans | One NIfTI per manifest record, 91×109×91 at 2 mm spacing |
-| Reference NIfTI | Exact template grid used by the preprocessing pipeline |
-| Preprocessing records | Image-ID mapping, software versions, QC and failed-scan list |
+| Classifier manifest | Tracked at `data/preprocessed_128_classifier_inputs/classifier_manifest.csv` |
+| Split JSON | Tracked at `data/preprocessed_128_classifier_inputs/classifier_splits.json` |
+| Volume | `{subject_id}_preprocessed_128.nii.gz`, shape 128×128×128 |
+| Spacing | Approximately 1.192616×1.474926×1.238708 mm |
+| Orientation | RAS in the template and sample headers |
+| Reference | Tracked at `template/mni152.nii.gz` |
+| Intensities | Already normalized; use `normalization: none` |
 
-The label mapping is CN=0, EMCI=1, LMCI=2, AD=3. The original split is preserved.
-Missing scans, duplicate subjects, overlapping splits, and ambiguous file matches
-stop the run. Any agreed exclusions must be recorded in revised manifests,
-splits, and expected counts.
+The prepared manifest, splits, and reference template are bundled directly with
+the repository. Only the large preprocessed MRI scans and training outputs reside
+on Google Drive.
 
-The preprocessing member supplies skull-stripped, MNI-registered volumes.
-The loader checks shape, spacing, explicit mm units, orientation, affine and
-voxel values. Anatomical alignment and brain extraction still need visual QC.
+The checked sample headers have the expected shape, spacing, orientation, and
+field-of-view lengths. Their affine origin is zero, unlike the MNI reference
+origin. The configured `same_fov` check validates orientation and physical
+extent, not world-coordinate origin. Preprocessing QC is a separate requirement;
+header compatibility alone does not establish anatomical quality. See the
+[runbook](docs/HANDOFF_AND_RUNBOOK.md) for this distinction and the atlas-alignment
+limitation.
 
-Update `configs/kaggle.yaml` when the files are available:
+## Colab Workflow
 
-```yaml
-data:
-  manifest_path: /kaggle/input/YOUR_DATASET/cohort_a_baseline_manifest.csv
-  splits_path: /kaggle/input/YOUR_DATASET/cohort_a_splits.json
-  volume_dir: /kaggle/input/YOUR_DATASET/preprocessed
-  file_pattern: "{subject_id}.nii.gz"
-  reference_image: /kaggle/input/YOUR_DATASET/reference.nii.gz
-  orientation: RAS
-  normalization: minmax
-  preprocessing_confirmed: true
+Mount Google Drive in Colab and clone this repository. The preprocessed scans
+must be available at `/content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/preprocessed_128/`.
+
+If you ever need to regenerate `classifier_inputs` from a revised preprocessing report:
+```bash
+ROOT=/content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS
+python -m scripts.prepare_preprocessed_manifest \
+  --baseline-manifest "$ROOT/classifier_setup/cohort_a_baseline_manifest.csv" \
+  --splits "$ROOT/classifier_setup/cohort_a_splits.json" \
+  --preprocessing-manifest "$ROOT/classifier_setup/preprocessing_manifest.csv" \
+  --output-dir "data/preprocessed_128_classifier_inputs"
 ```
 
-Use the delivered filenames and reference orientation; the values above are
-examples. Set `preprocessing_confirmed` only after receiving QC approval.
-The reference affine must match the scan grid. Paths are relative to the working
-directory unless absolute; `extends` paths are relative to the YAML file.
+The output directory contains `classifier_manifest.csv`,
+`classifier_splits.json`, and `preprocessing_summary.json`. Review the summary,
+especially the final-success count, retry count, missing-status subjects, and
+class counts by split. The training split must contain all four classes.
 
-Other supported patterns include `{subject_id}_I{image_id}.nii.gz` and
-`{subject_id}/*.nii.gz`. Exactly one file must match. Labels come from the CSV.
-Image IDs accept an optional `I` prefix. A subject-only filename relies on the
-preprocessing records to establish which baseline scan it represents.
+## Audit and train on Colab
 
-Choose `minmax` for foreground scaling to [0,1], `zscore` for foreground
-standardization, or `none` for images already normalized as agreed. Each image is
-normalized separately using nonzero voxels, with zero background preserved.
-This foreground mask is not a brain segmentation.
-
-## Train on Kaggle
-
-Audit the inputs and run the small training-set overfit check first:
+The Colab config points at the Drive folders above and starts with batch size 2
+and mixed precision. First audit the actual files and run the small overfit check:
 
 ```bash
-python -m scripts.validate_dataset --config configs/kaggle.yaml
-python -m scripts.tiny_overfit --config configs/kaggle.yaml --output /kaggle/working/tiny_overfit
+python -m scripts.validate_dataset --config configs/colab_preprocessed_128.yaml
+python -m scripts.tiny_overfit \
+  --config configs/colab_preprocessed_128.yaml \
+  --output /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs/tiny_overfit
 ```
 
-Next, run the provided two-epoch, full-width trial. Check memory use, output files,
-MedicalNet loading and epoch time before the full run. Batch size 4 is a starting
-point and may need adjustment.
+If those checks pass, run a short trial and then the planned training run:
 
 ```bash
-python -m src.train --config configs/kaggle_trial.yaml
+python -m src.train --config configs/colab_preprocessed_128.yaml --stop-after-epoch 2
+python -m src.train --config configs/colab_preprocessed_128.yaml
 ```
+
+Training uses train and validation images only. Choose the model using validation
+results, freeze the choices, and then evaluate the held-out test set explicitly:
 
 ```bash
-python -m src.train --config configs/kaggle.yaml
+python -m src.evaluate \
+  --config configs/colab_preprocessed_128.yaml \
+  --checkpoint PATH_TO_RUN/best.pt --split test --confirm-final-test
 ```
 
-The main settings are weighted cross-entropy, AdamW at 1e-4, cosine decay,
-50 epochs maximum, and early stopping after 10 epochs without improved validation
-macro-F1. The [code walkthrough](docs/CODE_WALKTHROUGH.md) explains the loss,
-checkpoint selection, and experiment comparisons.
-
-Training opens only train/validation images. The audit's `--include-test-qc`
-option includes test image integrity checks without generating predictions.
-Record the Git commit used for each run and keep the code fixed while it runs.
-
-To resume, use that run's saved configuration and `last.pt`:
+Export validation activations for later analysis:
 
 ```bash
-python -m src.train --config /kaggle/working/outputs/<run>/config.yaml --resume /kaggle/working/outputs/<run>/last.pt
+python -m src.export_activations \
+  --config configs/colab_preprocessed_128.yaml \
+  --checkpoint PATH_TO_RUN/best.pt --split val \
+  --output /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs/features
 ```
 
-Replace `<run>` with the directory printed by training. Resume requires unchanged
-configuration, paths and data. Changed settings or an extended schedule require a
-new experiment. Save the whole run directory before the Kaggle session ends.
+Feature export does not define a TCAV bottleneck or scoring procedure. Those
+research choices require separate justification; see the [code walkthrough](docs/CODE_WALKTHROUGH.md).
 
-## Evaluate and export
+## Synthetic software profile
 
-After selecting the configuration on validation data, evaluate the held-out test
-set:
-
-```bash
-python -m src.evaluate --config configs/kaggle.yaml --checkpoint /kaggle/working/outputs/<run>/best.pt --split test --confirm-final-test
-```
-
-Evaluation defaults to validation. The test flag records an explicit choice; it
-does not enforce one-time access. Test results must not guide tuning or seed
-selection. Existing evaluation directories are not overwritten.
-
-Results include aggregate/per-class/per-phase metrics, bootstrap intervals,
-subject predictions and probabilities, confusion matrices, and ROC/PR curves.
-The walkthrough explains undefined metrics and the binary-subset summaries.
-
-For the TCAV stage:
-
-```bash
-python -m src.export_activations --config configs/kaggle.yaml --checkpoint /kaggle/working/outputs/<run>/best.pt --split val --output /kaggle/working/features
-```
-
-This saves `pooled_features.npy` ([N,512]), `subjects.csv` and `provenance.json`.
-Add `--spatial` to save layer-4 maps. The code supports feature access; bottleneck
-selection and TCAV scoring remain separate. In particular, the final linear head
-has constant logit gradients at the pooled features, as explained in the walkthrough.
-
-## Test without MRI data
+The synthetic profile uses artificial 16³ volumes and a reduced model width. It
+checks software behavior only; it is not evidence of diagnostic performance.
 
 ```bash
 python -m scripts.make_synthetic
-OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 python -m src.train --config configs/smoke_test.yaml
+python -m src.train --config configs/smoke_test.yaml
 python -m scripts.tiny_overfit --config configs/smoke_test.yaml
 ```
 
-On Windows, set those environment variables in PowerShell or omit the prefix.
-The synthetic config uses 16³ artificial images and reduced model width. Its
-results test the code, not disease classification. Generation refuses to overwrite
-its directory; use a new `--output` and update the config to regenerate.
+Run the automated suite after installing development requirements with
+`pip install -r requirements-dev.txt` and `python -m pytest`.
 
-The same evaluation/export commands work with `configs/smoke_test.yaml` and the
-printed checkpoint path. Use validation for a routine software check.
+## Repository map
 
-## Files
+- `src/`: configuration, dataset, model, training, evaluation, and feature export.
+- `scripts/`: preprocessing-manifest preparation, dataset audit, volume inspection,
+  and synthetic-data utilities.
+- `configs/`: shared 128³ profile, Colab profile, experiment variants, and the
+  isolated synthetic profile.
+- `tests/`: automated unit and synthetic workflow checks.
+- `docs/`: runbook, implementation walkthrough, and verification record.
 
-| Location | Purpose |
-|---|---|
-| `configs/` | Base, Kaggle, random-initialization, augmentation and synthetic settings |
-| `src/dataset.py`, `transforms.py` | Indexing, image checks, normalization and augmentation |
-| `src/model.py`, `medicalnet.py` | Architecture and pretrained-weight loading |
-| `src/engine.py`, `train.py` | Epoch loop, checkpoints and resume |
-| `src/evaluate.py`, `metrics.py`, `plots.py` | Evaluation and figures |
-| `src/export_activations.py` | Feature export with subject mapping |
-| `src/config.py`, `constants.py`, `reproducibility.py` | Settings, labels and run metadata |
-| `scripts/`, `tests/` | Data audit, inspection, synthetic checks and automated tests |
-
-Each run saves its configuration, package versions, input hashes, resolved index,
-class weights, model summary, history, learning curves, best/last checkpoints, and
-best validation predictions/metrics. Pretrained runs add a weight-loading report.
-Evaluation outputs include the checkpoint hash.
-
-[Code walkthrough](docs/CODE_WALKTHROUGH.md) ·
-[Data handoff and runbook](docs/HANDOFF_AND_RUNBOOK.md) ·
-[Test results](docs/VERIFICATION.md) ·
-[MedicalNet attribution](THIRD_PARTY_NOTICES.md)
+See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for MedicalNet attribution.

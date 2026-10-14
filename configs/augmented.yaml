@@ -1,4 +1,4 @@
-extends: kaggle.yaml
+extends: preprocessed_128.yaml
 experiment:
   name: medicalnet_resnet18_augmented
 augmentation:

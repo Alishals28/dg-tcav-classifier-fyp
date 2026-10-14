@@ -1,14 +1,45 @@
+# Python build and cache files
 __pycache__/
 *.py[cod]
-.pytest_cache/
-.venv/
-outputs/
-*.pt
-*.pth
-*.nii
-*.nii.gz
-data/
 *.egg-info/
 build/
 dist/
+.pytest_cache/
 .ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Virtual environments and local secrets
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+
+# IDE and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Notebook runtime state
+.ipynb_checkpoints/
+
+# Keep private MRI scans, raw manifests, model weights, and run outputs out of Git.
+/data/**
+!/data/preprocessed_128_classifier_inputs/
+!/data/preprocessed_128_classifier_inputs/**
+outputs/
+*.nii
+*.nii.gz
+!/template/mni152.nii.gz
+*.pt
+*.pth
+*.ckpt
+*.log
+
+# Temporary editor and patch files
+*.swp
+*.tmp
+*~

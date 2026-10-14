@@ -5,18 +5,20 @@ experiment:
   smoke_test: false
 
 data:
-  manifest_path: data/cohort_a_baseline_manifest.csv
-  splits_path: data/cohort_a_splits.json
-  volume_dir: data/preprocessed
-  file_pattern: "{subject_id}_preprocessed_mni152_2mm.nii.gz"
-  expected_shape: [91, 109, 91]
-  expected_spacing: [2.0, 2.0, 2.0]
-  spacing_tolerance: 0.05
+  manifest_path: data/preprocessed_128_classifier_inputs/classifier_manifest.csv
+  splits_path: data/preprocessed_128_classifier_inputs/classifier_splits.json
+  volume_dir: data/preprocessed_scans
+  file_pattern: "{subject_id}_preprocessed_128.nii.gz"
+  expected_shape: [128, 128, 128]
+  expected_spacing: [1.1926161, 1.4749262, 1.2387075]
+  spacing_tolerance: 0.03
   orientation: RAS
-  normalization: minmax
-  expected_split_sizes: {train: 1134, val: 242, test: 247}
+  normalization: none
+  expected_split_sizes: {train: null, val: null, test: null}
   preprocessing_confirmed: true
-  reference_image: null  # Exact template grid supplied by the preprocessing teammate.
+  reference_image: template/mni152.nii.gz
+  reference_grid_mode: same_fov
+  reference_fov_tolerance_mm: 0.1
 
 model:
   num_classes: 4

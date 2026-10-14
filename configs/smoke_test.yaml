@@ -9,7 +9,12 @@ data:
   manifest_path: outputs/synthetic/manifest.csv
   splits_path: outputs/synthetic/splits.json
   volume_dir: outputs/synthetic/volumes
+  file_pattern: "{subject_id}.nii.gz"
   expected_shape: [16, 16, 16]
+  expected_spacing: [2.0, 2.0, 2.0]
+  spacing_tolerance: 0.05
+  orientation: RAS
+  normalization: minmax
   expected_split_sizes: {train: 8, val: 4, test: 4}
 
 model:

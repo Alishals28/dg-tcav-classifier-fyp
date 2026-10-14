@@ -40,13 +40,14 @@ The CSV provides scan identity and diagnosis. The split JSON assigns each subjec
 to training, validation or test. `build_index` checks the join before resolving
 image paths. This keeps all experimental runs on the same partition.
 
-Each scan becomes a float tensor of shape [batch, 1, 91, 109, 91]. The single
-channel contains MRI intensity, and NIfTI spatial-axis order is retained
-consistently. Class IDs are category indices, not numeric severity targets.
+Each scan becomes a float tensor of shape [batch, 1, 128, 128, 128] for the
+current real-data profile. Spacing, orientation and affine are checked against
+the configured reference. The single channel contains the already-normalized
+preprocessing output. Class IDs are category indices, not numeric severity
+targets.
 
-Normalization uses each image's nonzero foreground. It does not estimate
-statistics across subjects. Geometry checks cannot establish that preprocessing
-succeeded anatomically; those checks rely on the preprocessing team's QC.
+The real-data profile does not normalize again. Geometry checks cannot establish
+that preprocessing succeeded anatomically; those checks rely on preprocessing QC.
 
 ## Network and pretrained weights
 
@@ -72,10 +73,8 @@ Only trusted checkpoints should be supplied; loading uses `weights_only=True`.
 CrossEntropyLoss takes logits and applies log-softmax internally. Softmax is used
 afterward for prediction probabilities.
 
-Class weights are N_train / (4 × n_class_train), calculated from training labels
-only. For the verified training split they are approximately CN 0.6608, EMCI
-0.8915, LMCI 1.2713 and AD 1.7287; the code recalculates them rather than relying
-on copied values. There is no additional weighted sampler. Weighted cross-entropy
+Class weights are N_train / (4 × n_class_train), calculated from the current
+training labels only. There is no additional weighted sampler. Weighted cross-entropy
 divides by the sum of target-class weights; `run_epoch` accumulates that denominator
 so epoch loss is independent of how batches are grouped.
 
@@ -95,9 +94,10 @@ needs checking during the real-data trial. Training uses one device.
 and mild Gaussian noise, on training data only. It does not add flipping, cropping,
 axis swaps, or elastic deformation.
 
-`random_baseline.yaml` and `kaggle.yaml` keep architecture, loss and augmentation
-the same, changing only initialization. This isolates the effect of pretraining.
-Changing both initialization and class weighting would confound that comparison.
+`random_baseline.yaml` and `preprocessed_128.yaml` keep architecture, loss and
+augmentation the same, changing only initialization. This isolates the effect of
+pretraining. Changing both initialization and class weighting would confound
+that comparison. `colab_preprocessed_128.yaml` supplies the Drive paths for Colab.
 
 ## Training and checkpoints
 

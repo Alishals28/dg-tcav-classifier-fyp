@@ -1,4 +1,4 @@
-extends: kaggle.yaml
+extends: preprocessed_128.yaml
 experiment:
   name: random_resnet18_weighted_ce
 model:

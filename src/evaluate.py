@@ -26,7 +26,15 @@ def load_fitted_model(checkpoint_path, config, device):
     for key in ("num_classes", "base_channels", "shortcut"):
         if config["model"][key] != trained["model"][key]:
             raise ValueError(f"Model configuration differs from checkpoint: {key}")
-    for key in ("expected_shape", "expected_spacing", "orientation", "normalization"):
+    for key in (
+        "expected_shape",
+        "expected_spacing",
+        "spacing_tolerance",
+        "orientation",
+        "normalization",
+        "reference_grid_mode",
+        "reference_fov_tolerance_mm",
+    ):
         if config["data"][key] != trained["data"][key]:
             raise ValueError(
                 f"Preprocessing configuration differs from checkpoint: {key}"
