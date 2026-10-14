@@ -1,0 +1,14 @@
+extends: preprocessed_128.yaml
+
+# Scans come from the private Kaggle dataset attached to the kernel. Kaggle picks
+# the mount path; kaggle/kernel.py finds it and overrides volume_dir if needed.
+experiment:
+  name: resnet18_preprocessed_128_kaggle
+  output_dir: /kaggle/working/outputs
+
+data:
+  volume_dir: /kaggle/input/dg-tcav-preprocessed-128
+
+model:
+  pretrained: false
+  pretrained_checkpoint: null
