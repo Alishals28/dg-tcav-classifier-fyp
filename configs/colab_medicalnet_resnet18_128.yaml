@@ -1,0 +1,45 @@
+extends: base.yaml
+
+experiment:
+  name: medicalnet_resnet18_128_colab
+  output_dir: /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs
+
+data:
+  manifest_path: data/preprocessed_128_classifier_inputs/classifier_manifest.csv
+  splits_path: data/preprocessed_128_classifier_inputs/classifier_splits.json
+  volume_dir: /content/preprocessed_128
+  reference_image: template/mni152.nii.gz
+
+model:
+  architecture: ResNet18
+  num_classes: 4
+  base_channels: 64
+  shortcut: A
+  pretrained: true
+  pretrained_checkpoint: /content/weights/resnet_18_23dataset.pth
+
+augmentation:
+  enabled: true
+  degrees: 5
+  translation_mm: 2
+  scales: 0.03
+  noise_std: 0.01
+
+training:
+  optimizer: adamw
+  learning_rate: 0.0001
+  weight_decay: 0.0001
+  min_learning_rate: 0.000001
+  batch_size: 4
+  epochs: 100
+  balanced_sampler: true
+  weighted_loss: false
+  early_stopping_patience: 15
+  gradient_clip_norm: 1.0
+  mixed_precision: true
+  device: auto
+
+evaluation:
+  batch_size: 4
+  num_workers: 2
+  bootstrap_samples: 1000
