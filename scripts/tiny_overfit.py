@@ -28,6 +28,7 @@ def main():
     set_seed(cfg["experiment"]["seed"])
     cfg["augmentation"]["enabled"] = False
     cfg["training"]["num_workers"] = 0
+    cfg["training"]["balanced_sampler"] = False
     index = build_index(cfg["data"], ("train",))
     subset = (
         index[index.split == "train"]
@@ -37,7 +38,7 @@ def main():
     if len(subset) != 4 * args.per_class:
         raise ValueError("Not enough subjects for a balanced tiny subset")
     out = Path(args.output)
-    out.mkdir(parents=True, exist_ok=False)
+    out.mkdir(parents=True, exist_ok=True)
     subset.to_csv(out / "subjects.csv", index=False)
     device = choose_device(cfg["training"]["device"])
     model = build_model(cfg["model"], cfg["data"]["expected_shape"]).to(device)

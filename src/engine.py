@@ -7,6 +7,11 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, WeightedRandomSampler
 
+try:
+    from tqdm import tqdm
+except ImportError:
+    tqdm = None
+
 from .dataset import MRIDataset
 from .metrics import classification_metrics
 from .transforms import build_transform
@@ -66,7 +71,14 @@ def make_loader(index, split, config, generator=None):
 
 
 def run_epoch(
-    model, loader, device, criterion, optimizer=None, scaler=None, clip_norm=0.0
+    model,
+    loader,
+    device,
+    criterion,
+    optimizer=None,
+    scaler=None,
+    clip_norm=0.0,
+    desc=None,
 ):
     """Return epoch metrics and predictions with their subject IDs.
 
@@ -77,7 +89,10 @@ def run_epoch(
     model.train(training)
     numerator = denominator = 0.0
     labels, probabilities, records = [], [], []
-    for batch in loader:
+    iterator = loader
+    if desc and tqdm is not None:
+        iterator = tqdm(loader, desc=desc, leave=False, dynamic_ncols=True)
+    for batch in iterator:
         images = batch["image"].to(device, non_blocking=True)
         targets = batch["label"].to(device, non_blocking=True)
         if training:
@@ -112,6 +127,8 @@ def run_epoch(
         )
         numerator += loss.item() * weight_sum
         denominator += weight_sum
+        if desc and tqdm is not None and hasattr(iterator, "set_postfix"):
+            iterator.set_postfix({"loss": f"{numerator / denominator:.4f}"})
         prob = logits.detach().float().softmax(1).cpu().numpy()
         target = targets.cpu().numpy()
         labels.extend(target.tolist())

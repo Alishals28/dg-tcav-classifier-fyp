@@ -86,7 +86,9 @@ def evaluate(config, checkpoint, split="test", output=None):
         weight=torch.tensor(weights, device=device) if weights is not None else None
     )
     loader = make_loader(index, split, config)
-    metrics, records = run_epoch(model, loader, device, criterion)
+    metrics, records = run_epoch(
+        model, loader, device, criterion, desc=f"Evaluating {split}"
+    )
     predictions = pd.DataFrame(records)
     labels = predictions.true_label.to_numpy(dtype=int)
     probabilities = predictions[

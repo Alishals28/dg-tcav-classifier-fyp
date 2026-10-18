@@ -3,6 +3,7 @@
 import argparse
 import json
 import random
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -10,6 +11,12 @@ import numpy as np
 import pandas as pd
 import torch
 import yaml
+
+warnings.filterwarnings(
+    "ignore",
+    message=".*max_pool3d_with_indices_backward_cuda.*",
+    category=UserWarning,
+)
 
 from .config import load_config, require_preprocessing
 from .constants import LABEL_TO_INDEX
@@ -182,8 +189,15 @@ def train(config, resume=None, stop_after_epoch=None):
             optimizer,
             scaler,
             settings["gradient_clip_norm"],
+            desc=f"Epoch {epoch}/{settings['epochs']} [Train]",
         )
-        validation, predictions = run_epoch(model, val_loader, device, criterion)
+        validation, predictions = run_epoch(
+            model,
+            val_loader,
+            device,
+            criterion,
+            desc=f"Epoch {epoch}/{settings['epochs']} [Val]",
+        )
         score = validation["macro_f1"]
         improved = score > best
         # A tied score keeps the earlier checkpoint and counts toward patience.
