@@ -1,8 +1,9 @@
 # DG-TCAV classifier
 
 Four-class classification of baseline ADNI T1 MRI scans: CN, EMCI, LMCI, and AD.
-The classifier is a MedicalNet-compatible 3D ResNet-18 with a four-class head.
-The real-data profile expects the project's preprocessed 128×128×128 NIfTI scans.
+The repository supports a MedicalNet-compatible 3D ResNet-18 and a four-block
+dilated `ClassifierCNN`, both with four-class heads. Real-data profiles use the project's
+preprocessed 128×128×128 NIfTI scans.
 MRI preprocessing and diffusion generation are separate project components.
 
 This repository contains code and documentation, not the private scans, subject
@@ -77,31 +78,37 @@ rsync -a --include='*_preprocessed_128.nii.gz' --exclude='*' \
   /content/preprocessed_128/
 ```
 
-`configs/colab_local_128.yaml` reads scans from that copy and writes outputs to
-Drive; `configs/colab_preprocessed_128.yaml` reads directly from Drive. Both use
-batch size 2 and mixed precision. Resume a run with the config it started with.
+`configs/colab_classifier_cnn_128.yaml` reads scans from that copy and writes
+outputs to Drive. It selects the ClassifierCNN profile, uses batch size 4, and
+enables mixed precision. Confirm that batch size fits the selected GPU before
+starting the full run. Resume a run with the exact config it started with.
 First audit the actual files and run the small overfit check:
 
 ```bash
-python -m scripts.validate_dataset --config configs/colab_local_128.yaml
+python -m scripts.validate_dataset --config configs/colab_classifier_cnn_128.yaml
 python -m scripts.tiny_overfit \
-  --config configs/colab_local_128.yaml \
+  --config configs/colab_classifier_cnn_128.yaml \
   --output /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs/tiny_overfit
 ```
 
 If those checks pass, run a short trial and then the planned training run:
 
 ```bash
-python -m src.train --config configs/colab_local_128.yaml --stop-after-epoch 2
-python -m src.train --config configs/colab_local_128.yaml
+python -m src.train --config configs/colab_classifier_cnn_128.yaml --stop-after-epoch 2
+python -m src.train --config configs/colab_classifier_cnn_128.yaml
 ```
+
+This profile uses Adam, instance normalization, Gaussian blur, affine
+augmentation, and balanced sampling. Weighted cross-entropy is disabled to avoid
+correcting class imbalance twice. These choices are experiment settings, not a
+guarantee of stable optimization or improved accuracy.
 
 Training uses train and validation images only. Choose the model using validation
 results, freeze the choices, and then evaluate the held-out test set explicitly:
 
 ```bash
 python -m src.evaluate \
-  --config configs/colab_local_128.yaml \
+  --config configs/colab_classifier_cnn_128.yaml \
   --checkpoint PATH_TO_RUN/best.pt --split test --confirm-final-test
 ```
 
@@ -109,7 +116,7 @@ Export validation activations for later analysis:
 
 ```bash
 python -m src.export_activations \
-  --config configs/colab_local_128.yaml \
+  --config configs/colab_classifier_cnn_128.yaml \
   --checkpoint PATH_TO_RUN/best.pt --split val \
   --output /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs/features
 ```
@@ -136,7 +143,7 @@ Run the automated suite after installing development requirements with
 - `src/`: configuration, dataset, model, training, evaluation, and feature export.
 - `scripts/`: preprocessing-manifest preparation, dataset audit, volume inspection,
   and synthetic-data utilities.
-- `configs/`: shared 128³ profile, Colab profile, experiment variants, and the
+- `configs/`: current CNN profiles, retained ResNet comparison profiles, and the
   isolated synthetic profile.
 - `tests/`: automated unit and synthetic workflow checks.
 - `docs/`: runbook, implementation walkthrough, and verification record.

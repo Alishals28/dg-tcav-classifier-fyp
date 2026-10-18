@@ -1,7 +1,9 @@
+import pandas as pd
 import pytest
 import torch
+from torch.utils.data import WeightedRandomSampler
 
-from src.engine import run_epoch
+from src.engine import make_loader, run_epoch
 
 
 @pytest.mark.parametrize("batch_size", [1, 2, 5])
@@ -28,3 +30,25 @@ def test_weighted_epoch_loss_is_independent_of_batch_partition(batch_size):
     )
     assert metrics["loss"] == pytest.approx(loss(logits, labels).item(), rel=1e-6)
     assert len(predictions) == 5
+
+
+def test_balanced_sampler_uses_inverse_class_frequency():
+    labels = [0, 0, 0, 1, 2, 3]
+    index = pd.DataFrame(
+        {
+            "split": ["train"] * len(labels),
+            "label": labels,
+            "subject_id": [str(i) for i in range(len(labels))],
+        }
+    )
+    config = {
+        "training": {"batch_size": 2, "num_workers": 0, "balanced_sampler": True},
+        "evaluation": {"batch_size": 2, "num_workers": 0},
+        "augmentation": {"enabled": False},
+        "data": {},
+    }
+    loader = make_loader(index, "train", config, torch.Generator().manual_seed(4))
+    assert isinstance(loader.sampler, WeightedRandomSampler)
+    assert loader.sampler.weights.tolist() == pytest.approx(
+        [1 / 3, 1 / 3, 1 / 3, 1, 1, 1]
+    )

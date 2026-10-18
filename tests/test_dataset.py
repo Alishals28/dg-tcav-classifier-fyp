@@ -24,7 +24,6 @@ def test_dataset_shapes_and_labels(config):
     )
     assert audit_dataset(index, config["data"])["passed"]
 
-
 @pytest.mark.parametrize(
     "problem",
     [

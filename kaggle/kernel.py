@@ -45,7 +45,7 @@ run("python -c \"import torch; print('torch', torch.__version__, 'cuda', torch.c
 config = REPO_DIR / "configs" / "kaggle_run.yaml"
 volume_dir, file_pattern = find_scans()
 config.write_text(
-    "extends: kaggle_128.yaml\n\ndata:\n"
+    "extends: kaggle_classifier_cnn_128.yaml\n\ndata:\n"
     f"  volume_dir: {volume_dir}\n  file_pattern: \"{file_pattern}\"\n"
 )
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)

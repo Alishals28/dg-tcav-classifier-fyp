@@ -40,7 +40,7 @@ def main():
     out.mkdir(parents=True, exist_ok=False)
     subset.to_csv(out / "subjects.csv", index=False)
     device = choose_device(cfg["training"]["device"])
-    model = build_model(cfg["model"]).to(device)
+    model = build_model(cfg["model"], cfg["data"]["expected_shape"]).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.0)
     scaler = torch.amp.GradScaler("cuda", enabled=False)
     criterion = torch.nn.CrossEntropyLoss()

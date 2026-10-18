@@ -103,10 +103,26 @@ def _validate_config(config: dict[str, Any]) -> None:
         raise ValueError("bootstrap_samples must be nonnegative")
     if config["data"]["spacing_tolerance"] < 0:
         raise ValueError("spacing_tolerance must be nonnegative")
-    if any(v < 0 for k, v in config["augmentation"].items() if k != "enabled"):
+    if any(
+        v < 0
+        for k, v in config["augmentation"].items()
+        if k not in {"enabled", "blur_sigma"}
+    ):
         raise ValueError("Augmentation magnitudes must be nonnegative")
+    blur_sigma = config["augmentation"].get("blur_sigma", (0.0, 1.5))
+    if len(blur_sigma) != 2 or blur_sigma[0] < 0 or blur_sigma[1] < blur_sigma[0]:
+        raise ValueError("augmentation.blur_sigma must be an increasing nonnegative pair")
     if config["model"].get("num_classes") != 4:
         raise ValueError("This project is defined as a four-class classifier")
+    architecture = config["model"].get("architecture", "ResNet18")
+    if architecture not in {"ResNet18", "ClassifierCNN"}:
+        raise ValueError(f"Unsupported model architecture: {architecture}")
+    if config["training"].get("optimizer", "adamw").lower() not in {"adam", "adamw"}:
+        raise ValueError("training.optimizer must be adam or adamw")
+    if "balanced_sampler" in config["training"] and type(
+        config["training"]["balanced_sampler"]
+    ) is not bool:
+        raise ValueError("training.balanced_sampler must be a YAML boolean")
     if int(config["training"].get("epochs", 0)) <= 0:
         raise ValueError("training.epochs must be positive")
     for section in ("training", "evaluation"):
@@ -132,10 +148,16 @@ def _validate_config(config: dict[str, Any]) -> None:
         raise ValueError("reference_grid_mode must be exact or same_fov")
     if config["data"].get("reference_fov_tolerance_mm", 0.1) < 0:
         raise ValueError("reference_fov_tolerance_mm must be nonnegative")
-    if config["model"]["shortcut"] not in {"A", "B"}:
+    if architecture == "ResNet18" and config["model"]["shortcut"] not in {"A", "B"}:
         raise ValueError("shortcut must be A or B")
+    if architecture == "ClassifierCNN" and config["model"].get(
+        "norm_type", "instance"
+    ) not in {"instance", "batch"}:
+        raise ValueError("ClassifierCNN norm_type must be instance or batch")
     if config["model"]["pretrained"] and not config["model"]["pretrained_checkpoint"]:
         raise ValueError("Pretrained training requires a checkpoint path")
+    if architecture == "ClassifierCNN" and config["model"]["pretrained"]:
+        raise ValueError("MedicalNet weights are supported only by ResNet18")
 
 
 def require_preprocessing(config: dict[str, Any]) -> None:

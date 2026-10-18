@@ -8,6 +8,7 @@ def build_transform(config):
 
     return tio.Compose(
         [
+            tio.RandomBlur(std=config.get("blur_sigma", (0.0, 1.5)), p=0.5),
             tio.RandomAffine(
                 scales=config["scales"],
                 degrees=config["degrees"],
@@ -16,6 +17,10 @@ def build_transform(config):
                 image_interpolation="linear",
                 p=0.5,
             ),
-            tio.RandomNoise(mean=0, std=(0, config["noise_std"]), p=0.25),
+            *(
+                [tio.RandomNoise(mean=0, std=(0, config["noise_std"]), p=0.25)]
+                if config.get("noise_std", 0) > 0
+                else []
+            ),
         ]
     )

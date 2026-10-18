@@ -30,7 +30,7 @@ def export_features(config, checkpoint, output, split="val", spatial=False):
     with torch.no_grad():
         for batch in loader:
             activation = model.get_layer4_activations(batch["image"].to(device))
-            features.append(model.avgpool(activation).flatten(1).cpu().numpy())
+            features.append(model.features_from_activations(activation).cpu().numpy())
             for i, subject in enumerate(batch["subject_id"]):
                 row = {
                     "row": len(rows),
@@ -59,7 +59,7 @@ def export_features(config, checkpoint, output, split="val", spatial=False):
             "split": split,
             "layer": "layer4",
             "rows": len(rows),
-            "feature_dim": model.fc.in_features,
+            "feature_dim": model.feature_dim,
             "warning": "Exported arrays have no gradients. TCAV requires live model autograd and a justified bottleneck.",
         },
     )

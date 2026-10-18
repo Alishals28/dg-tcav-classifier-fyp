@@ -43,3 +43,4 @@ outputs/
 *.swp
 *.tmp
 *~
+reference/

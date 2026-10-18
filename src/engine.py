@@ -5,7 +5,7 @@ import random
 import numpy as np
 import torch
 from torch import nn
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, WeightedRandomSampler
 
 from .dataset import MRIDataset
 from .metrics import classification_metrics
@@ -39,10 +39,24 @@ def make_loader(index, split, config, generator=None):
     settings = config["training" if split == "train" else "evaluation"]
     transform = build_transform(config["augmentation"]) if split == "train" else None
     dataset = MRIDataset(index, split, config["data"], transform)
+    sampler = None
+    if split == "train" and config["training"].get("balanced_sampler", False):
+        labels = np.asarray([record["label"] for record in dataset.records], dtype=int)
+        counts = np.bincount(labels, minlength=4)
+        if np.any(counts == 0):
+            raise ValueError("Balanced sampling requires every class in training")
+        sample_weights = torch.as_tensor(1.0 / counts[labels], dtype=torch.double)
+        sampler = WeightedRandomSampler(
+            sample_weights,
+            num_samples=len(sample_weights),
+            replacement=True,
+            generator=generator,
+        )
     return DataLoader(
         dataset,
         batch_size=settings["batch_size"],
-        shuffle=split == "train",
+        shuffle=split == "train" and sampler is None,
+        sampler=sampler,
         num_workers=settings["num_workers"],
         worker_init_fn=seed_worker,
         generator=generator,

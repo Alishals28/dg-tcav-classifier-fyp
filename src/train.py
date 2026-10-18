@@ -110,7 +110,7 @@ def train(config, resume=None, stop_after_epoch=None):
         index, "val", config, torch.Generator().manual_seed(seed + 1)
     )
     weights = class_weights(index) if config["training"]["weighted_loss"] else None
-    model = build_model(config["model"])
+    model = build_model(config["model"], config["data"]["expected_shape"])
     if state is None and config["model"]["pretrained"]:
         load_medicalnet(
             model,
@@ -130,10 +130,18 @@ def train(config, resume=None, stop_after_epoch=None):
     criterion = torch.nn.CrossEntropyLoss(
         weight=weights.to(device) if weights is not None else None
     )
-    optimizer = torch.optim.AdamW(
+    optimizer_name = settings.get("optimizer", "adamw").lower()
+    optimizer_class = {
+        "adam": torch.optim.Adam,
+        "adamw": torch.optim.AdamW,
+    }.get(optimizer_name)
+    if optimizer_class is None:
+        raise ValueError(f"Unsupported optimizer: {optimizer_name}")
+    optimizer = optimizer_class(
         model.parameters(),
         lr=settings["learning_rate"],
         weight_decay=settings["weight_decay"],
+        betas=tuple(settings.get("betas", (0.9, 0.999))),
     )
     scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
         optimizer, T_max=settings["epochs"], eta_min=settings["min_learning_rate"]

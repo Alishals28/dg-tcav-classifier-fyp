@@ -23,7 +23,7 @@ identity, runs the same inference loop, and then writes metrics and figures.
 | `dataset.py: build_index` | Joins manifest rows to the fixed split and resolves exactly one scan per subject |
 | `dataset.py: load_volume` | Checks the NIfTI grid and applies the configured per-image normalization |
 | `dataset.py: audit_dataset` | Reads every selected scan and records errors and file hashes |
-| `model.py: ResNet18` | Defines the MedicalNet-compatible backbone, global pooling and four-class head |
+| `model.py: ResNet18`, `ClassifierCNN` | Provides selectable four-class backbones and a shared feature/activation interface |
 | `medicalnet.py: load_medicalnet` | Loads compatible backbone tensors and writes a detailed loading report |
 | `engine.py: make_loader` | Creates seeded data loaders and enables augmentation only for training |
 | `engine.py: run_epoch` | Performs either parameter updates or inference and returns subject-aligned predictions |
@@ -56,9 +56,18 @@ This provides a shorter gradient path through the network. When dimensions chang
 shortcut A subsamples the input and pads channels with zeros. It has no learned
 parameters, and the implementation keeps its gradients attached.
 
-The backbone follows MedicalNet ResNet-18: two blocks per stage, shortcut A, and
-dilation 2 and 4 in stages 3 and 4. Global average pooling replaces the segmentation
-decoder, producing 512 features. A linear layer maps these to four logits.
+The default backbone follows MedicalNet ResNet-18: two blocks per stage, shortcut
+A, and dilation 2 and 4 in stages 3 and 4. Global average pooling produces 512
+features, followed by a linear four-class head.
+
+`configs/classifier_cnn_128.yaml` selects the alternative four-block dilated
+`ClassifierCNN`:
+four dilated Conv3d blocks with configurable InstanceNorm3d or BatchNorm3d, then a
+flattened spatial representation, a 1024-dimensional `fc6` feature layer, and a
+two-layer classifier head. Its flatten dimension is inferred on the meta device
+from the configured input shape, avoiding an expensive real 3D dummy forward.
+For the 128³ profile, Block 4 has shape [batch, 512, 3, 3, 3]. This architecture
+does not use the MedicalNet checkpoint loader.
 
 The supported official checkpoints are `resnet_18.pth` and
 `resnet_18_23dataset.pth`, obtained from
@@ -73,32 +82,39 @@ Only trusted checkpoints should be supplied; loading uses `weights_only=True`.
 CrossEntropyLoss takes logits and applies log-softmax internally. Softmax is used
 afterward for prediction probabilities.
 
-Class weights are N_train / (4 × n_class_train), calculated from the current
-training labels only. There is no additional weighted sampler. Weighted cross-entropy
-divides by the sum of target-class weights; `run_epoch` accumulates that denominator
-so epoch loss is independent of how batches are grouped.
+The default profile uses class weights N_train / (4 × n_class_train), calculated
+from training labels only. `ClassifierCNN` instead enables an inverse-frequency
+`WeightedRandomSampler` and disables weighted loss, avoiding simultaneous
+reweighting by both mechanisms. Weighted cross-entropy, when selected, divides by
+the sum of target-class weights; `run_epoch` accumulates that denominator so epoch
+loss is independent of how batches are grouped.
 
 | Setting | Initial value |
 |---|---|
-| Optimizer | AdamW; learning rate 1e-4, weight decay 1e-4 |
-| Schedule | Cosine decay to 1e-6 over at most 50 epochs |
+| Default ResNet optimizer | AdamW; learning rate 1e-4, weight decay 1e-4 |
+| ClassifierCNN optimizer | Adam; learning rate 1e-3, betas (0.9, 0.999) |
+| Schedule | Cosine decay to 1e-6 over the configured maximum (50 default; 100 for ClassifierCNN) |
 | Model selection | Highest validation macro-F1 |
 | Early stopping | 10 epochs without improvement |
-| Fine-tuning | All layers, including BatchNorm |
+| Fine-tuning | All layers, including the selected normalization layers |
 | Augmentation | Off for the initial comparison |
 
 There is no warm-up or layer-freezing schedule. Small-batch BatchNorm behavior
 needs checking during the real-data trial. Training uses one device.
 
-`augmented.yaml` enables small TorchIO affine transforms in physical coordinates
-and mild Gaussian noise, on training data only. It does not add flipping, cropping,
-axis swaps, or elastic deformation.
+`augmented.yaml` enables TorchIO Gaussian blur, small affine transforms in physical
+coordinates, and mild Gaussian noise on training data only. The dedicated
+ClassifierCNN profile disables added noise and instead enables balanced sampling.
+No profile adds cropping, flipping, axis swaps, or elastic deformation.
 
 `random_baseline.yaml` and `preprocessed_128.yaml` keep architecture, loss and
 augmentation the same, changing only initialization. This isolates the effect of
 pretraining. Changing both initialization and class weighting would confound
-that comparison. `colab_preprocessed_128.yaml` supplies the Drive paths for Colab.
-`colab_local_128.yaml` extends it to read scans from a copy on the Colab VM disk.
+that comparison. This ResNet comparison does not describe the ClassifierCNN
+profile, which has no pretrained checkpoint. The current CNN Colab workflow is
+`colab_classifier_cnn_128.yaml`; it reads copied scans from the Colab VM disk and
+writes outputs to Drive. The older `colab_preprocessed_128.yaml` and
+`colab_local_128.yaml` remain for ResNet comparison runs.
 
 ## Training and checkpoints
 
@@ -140,14 +156,18 @@ separately trained binary classifier.
 
 ## Feature export and TCAV
 
-The live model exposes pooled features, spatial layer-4 activations and methods
-that continue to the logits with gradients attached. Exported NumPy arrays do not
-retain gradients. Subject rows keep the arrays aligned with their metadata.
+Both live models expose spatial layer-4 activations and methods that continue to
+the logits with gradients attached. ResNet exports its 512-dimensional pooled
+features; ClassifierCNN exports the 1024-dimensional `fc6` features. Exported
+NumPy arrays do not retain gradients. Subject rows keep arrays aligned with their
+metadata.
 
-There is an important limitation at this bottleneck: for a pooled vector z and
-linear head, a class logit is wᵀz + b, so its gradient with respect to z is w for
-every subject. The same issue occurs immediately before global pooling. A
-sign-based logit TCAV score there can therefore be degenerate.
+For ResNet, there is an important limitation at the pooled bottleneck: for a
+pooled vector z and a linear head, a class logit is wᵀz + b, so its gradient
+with respect to z is w for every subject. The same issue occurs immediately
+before global pooling. ClassifierCNN has a nonlinear classifier head after `fc6`,
+but that alone does not establish a scientifically justified TCAV bottleneck.
+A sign-based logit TCAV score still requires validation.
 
 The TCAV stage still needs to choose a suitable nonlinear bottleneck or another
 justified design, define concept/control examples, fit CAVs and test significance.

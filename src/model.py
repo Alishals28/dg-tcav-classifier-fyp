@@ -68,6 +68,7 @@ class ResNet18(nn.Module):
             raise ValueError("Invalid architecture settings")
         self.base_channels, self.shortcut = base_channels, shortcut
         c = base_channels
+        self.feature_dim = c * 8
         self.conv1 = nn.Conv3d(1, c, 7, stride=2, padding=3, bias=False)
         self.bn1 = nn.BatchNorm3d(c)
         self.relu = nn.ReLU(inplace=False)
@@ -100,18 +101,139 @@ class ResNet18(nn.Module):
 
     def forward_features(self, x):
         """Return [batch, 512] pooled features for the full-width model."""
-        return self.avgpool(self.get_layer4_activations(x)).flatten(1)
+        return self.features_from_activations(self.get_layer4_activations(x))
+
+    def features_from_activations(self, activations):
+        return self.avgpool(activations).flatten(1)
 
     def forward_head(self, features):
         return self.fc(features)
 
     def forward_from_activations(self, activations):
         """Continue the classifier from spatial layer-4 activations without detaching."""
-        return self.fc(self.avgpool(activations).flatten(1))
+        return self.forward_head(self.features_from_activations(activations))
 
     def forward(self, x):
         return self.forward_head(self.forward_features(x))
 
 
-def build_model(config):
-    return ResNet18(config["num_classes"], config["base_channels"], config["shortcut"])
+class ClassifierCNN(nn.Module):
+    """Four-block dilated 3D CNN with a spatially flattened feature bottleneck."""
+
+    def __init__(
+        self,
+        in_channels=1,
+        num_classes=4,
+        expansion=8,
+        feature_dim=1024,
+        nhid=512,
+        norm_type="instance",
+        input_shape=(128, 128, 128),
+    ):
+        super().__init__()
+        if num_classes != 4 or norm_type not in {"instance", "batch"}:
+            raise ValueError("ClassifierCNN requires four classes and a supported norm")
+        if in_channels < 1 or expansion < 1 or feature_dim < 1 or nhid < 1:
+            raise ValueError("ClassifierCNN dimensions must be positive")
+        if len(input_shape) != 3 or any(int(size) < 1 for size in input_shape):
+            raise ValueError("input_shape must contain three positive dimensions")
+
+        self.num_classes = num_classes
+        self.feature_dim = feature_dim
+        self.norm_type = norm_type
+        self.input_shape = tuple(int(size) for size in input_shape)
+        norm = nn.InstanceNorm3d if norm_type == "instance" else nn.BatchNorm3d
+
+        def make_backbone():
+            return nn.Sequential(
+                nn.Conv3d(in_channels, 4 * expansion, kernel_size=1),
+                norm(4 * expansion, affine=True),
+                nn.ReLU(inplace=False),
+                nn.MaxPool3d(3, stride=2),
+                nn.Conv3d(4 * expansion, 32 * expansion, kernel_size=3, dilation=2),
+                norm(32 * expansion, affine=True),
+                nn.ReLU(inplace=False),
+                nn.MaxPool3d(3, stride=2),
+                nn.Conv3d(
+                    32 * expansion,
+                    64 * expansion,
+                    kernel_size=5,
+                    padding=2,
+                    dilation=2,
+                ),
+                norm(64 * expansion, affine=True),
+                nn.ReLU(inplace=False),
+                nn.MaxPool3d(3, stride=2),
+                nn.Conv3d(
+                    64 * expansion,
+                    64 * expansion,
+                    kernel_size=3,
+                    padding=1,
+                    dilation=2,
+                ),
+                norm(64 * expansion, affine=True),
+                nn.ReLU(inplace=False),
+                nn.MaxPool3d(5, stride=2),
+            )
+
+        self.conv = make_backbone()
+        # Infer the flatten dimension without executing the very expensive 3D convolutions.
+        with torch.random.fork_rng(devices=[]):
+            with torch.device("meta"):
+                shape_backbone = make_backbone()
+                dummy = torch.zeros(1, in_channels, *self.input_shape, device="meta")
+                flat_dim = shape_backbone(dummy).flatten(1).shape[1]
+        if flat_dim < 1:
+            raise ValueError("input_shape is too small for ClassifierCNN")
+
+        self.fc6 = nn.Sequential(
+            nn.Linear(flat_dim, feature_dim),
+            nn.ReLU(inplace=False),
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(feature_dim, nhid),
+            nn.ReLU(inplace=False),
+            nn.Linear(nhid, num_classes),
+        )
+        self.flat_dim = flat_dim
+        for module in self.modules():
+            if isinstance(module, nn.Linear):
+                nn.init.normal_(module.weight, mean=0.0, std=0.01)
+                nn.init.zeros_(module.bias)
+
+    def get_layer4_activations(self, x):
+        return self.conv(x)
+
+    def features_from_activations(self, activations):
+        return self.fc6(activations.flatten(1))
+
+    def forward_features(self, x):
+        return self.features_from_activations(self.get_layer4_activations(x))
+
+    def forward_head(self, features):
+        return self.classifier(features)
+
+    def forward_from_activations(self, activations):
+        return self.forward_head(self.features_from_activations(activations))
+
+    def forward(self, x):
+        return self.forward_head(self.forward_features(x))
+
+
+def build_model(config, input_shape=None):
+    architecture = config.get("architecture", "ResNet18")
+    if architecture == "ResNet18":
+        return ResNet18(
+            config["num_classes"], config["base_channels"], config["shortcut"]
+        )
+    if architecture == "ClassifierCNN":
+        return ClassifierCNN(
+            in_channels=config.get("in_channels", 1),
+            num_classes=config["num_classes"],
+            expansion=config.get("expansion", 8),
+            feature_dim=config.get("feature_dim", 1024),
+            nhid=config.get("nhid", 512),
+            norm_type=config.get("norm_type", "instance"),
+            input_shape=input_shape or config.get("input_shape", (128, 128, 128)),
+        )
+    raise ValueError(f"Unsupported model architecture: {architecture}")
