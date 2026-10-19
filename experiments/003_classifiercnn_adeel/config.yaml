@@ -1,0 +1,12 @@
+# Base config: configs/kaggle_classifier_cnn_128.yaml (Adeel, 18 Oct; ClassifierCNN, instance norm,
+# Adam 1e-3, balanced sampler, unweighted CE, blur + affine augmentation, patience 10).
+# Deviation for compute budget: epochs 100 -> 40 (about 280 s/epoch on a T4). Dead-run stop after 6
+# single-class validation epochs (Adeel's two Colab runs collapsed to one class from epoch 1).
+extends: ../../configs/kaggle_classifier_cnn_128.yaml
+
+experiment:
+  name: exp003_classifiercnn_adeel
+
+training:
+  epochs: 40
+  dead_run_epochs: 6

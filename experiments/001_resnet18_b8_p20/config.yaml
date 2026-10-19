@@ -1,0 +1,21 @@
+# Base config: configs/kaggle_128.yaml (-> preprocessed_128.yaml -> base.yaml).
+# ResNet-18 (MedicalNet layout), random init, weighted CE, AdamW 1e-4 cosine over 50 epochs, AMP, no augmentation.
+# Change vs our earlier runs: batch 2 -> 8 and early-stopping patience 10 -> 20.
+# volume_dir, file_pattern, seed and output_dir are set per seed by experiments/run.py on Kaggle.
+extends: ../../configs/kaggle_128.yaml
+
+experiment:
+  name: exp001_resnet18_b8_p20
+
+model:
+  architecture: ResNet18
+  pretrained: false
+  pretrained_checkpoint: null
+
+training:
+  batch_size: 8
+  early_stopping_patience: 20
+  dead_run_epochs: 6
+
+evaluation:
+  batch_size: 8

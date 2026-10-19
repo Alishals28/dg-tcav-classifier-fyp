@@ -1,0 +1,20 @@
+# Base config: configs/colab_medicalnet_resnet18_128.yaml (Adeel, 19 Oct; MedicalNet-pretrained ResNet-18,
+# batch 4, balanced sampler, unweighted CE, AdamW 1e-4 cosine over 100 epochs, patience 15, no augmentation).
+# Only change: manifest/splits repointed from the uncommitted *_refresh folder to the fixed, committed
+# protocol (535/112/121), and the checkpoint digest pinned. Weights: official Tencent MedicalNet
+# resnet_18_23dataset.pth (Hugging Face TencentMedicalNet/MedicalNet-Resnet18), Kaggle dataset
+# khizerinam08/medicalnet-resnet18-23dataset; the runner sets pretrained_checkpoint to its mount path.
+extends: ../../configs/colab_medicalnet_resnet18_128.yaml
+
+experiment:
+  name: exp002_medicalnet_resnet18
+
+data:
+  manifest_path: data/preprocessed_128_classifier_inputs/classifier_manifest.csv
+  splits_path: data/preprocessed_128_classifier_inputs/classifier_splits.json
+
+model:
+  pretrained_checkpoint_sha256: 61224f9317fcce873366deb3703183e92cc47325b726b69691b33536244e10f4
+
+training:
+  dead_run_epochs: 6

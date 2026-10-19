@@ -158,6 +158,8 @@ def train(config, resume=None, stop_after_epoch=None):
         "cuda", enabled=settings["mixed_precision"] and device.type == "cuda"
     )
     start, best, bad_epochs, history = 0, -1.0, 0, []
+    # Consecutive epochs whose validation predictions are all one class.
+    collapsed_epochs = 0
     # Restore RNG last: constructing the model above consumes random numbers.
     if state is not None:
         model.load_state_dict(state["model_state_dict"], strict=True)
@@ -247,6 +249,17 @@ def train(config, resume=None, stop_after_epoch=None):
             f"val_macro_f1={score:.4f} best={best:.4f} seconds={row['seconds']:.1f}",
             flush=True,
         )
+        predicted = {record["predicted_label"] for record in predictions}
+        collapsed_epochs = collapsed_epochs + 1 if len(predicted) == 1 else 0
+        dead_run_epochs = settings.get("dead_run_epochs")
+        if dead_run_epochs and collapsed_epochs >= dead_run_epochs:
+            reason = (
+                f"validation predicted a single class for {collapsed_epochs} "
+                "consecutive epochs"
+            )
+            write_json(run_dir / "dead_run.json", {"epoch": epoch, "reason": reason})
+            print(f"Stopping dead run at epoch {epoch}: {reason}", flush=True)
+            break
         if bad_epochs >= settings["early_stopping_patience"] or (
             stop_after_epoch and epoch >= stop_after_epoch
         ):
