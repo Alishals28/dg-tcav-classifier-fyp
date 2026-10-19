@@ -1,0 +1,11 @@
+# Base: experiments/004_gpu_augment/config.yaml (accepted baseline).
+# Change: ordinal soft labels during training, i.e. Gaussian targets over CN < EMCI < LMCI < AD with sigma 0.6
+# (true class 0.67-0.80, neighbours share the rest). Class weights unchanged. Targets EMCI (F1 0.18 in 004),
+# which is mostly confused with CN and AD. Validation loss and metrics use hard labels.
+extends: ../004_gpu_augment/config.yaml
+
+experiment:
+  name: exp008_ordinal_soft
+
+training:
+  ordinal_sigma: 0.6

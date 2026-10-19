@@ -1,0 +1,11 @@
+# Base: experiments/004_gpu_augment/config.yaml (accepted baseline: 001 + GPU augmentation).
+# Change: longer schedule, epochs 50 -> 100 (cosine over 100) and patience 20 -> 30. In 004 every seed
+# reached its best epoch at 37-47 of 50 and train bal-acc was still rising (0.76-0.86).
+extends: ../004_gpu_augment/config.yaml
+
+experiment:
+  name: exp007_long_schedule
+
+training:
+  epochs: 100
+  early_stopping_patience: 30

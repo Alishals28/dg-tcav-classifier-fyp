@@ -102,6 +102,14 @@ def gpu_augment(images: torch.Tensor, settings: dict) -> torch.Tensor:
     return images * gain + offset * foreground
 
 
+def ordinal_soft_targets(targets: torch.Tensor, sigma: float) -> torch.Tensor:
+    """Gaussian soft labels over the ordered stages CN < EMCI < LMCI < AD."""
+    stages = torch.arange(4, device=targets.device, dtype=torch.float32)
+    distance = stages[None, :] - targets[:, None].float()
+    weights = torch.exp(-0.5 * (distance / sigma) ** 2)
+    return weights / weights.sum(1, keepdim=True)
+
+
 def run_epoch(
     model,
     loader,
@@ -113,6 +121,7 @@ def run_epoch(
     desc=None,
     ema=None,
     augment=None,
+    ordinal_sigma=0.0,
 ):
     """Return epoch metrics and predictions with their subject IDs.
 
@@ -140,7 +149,10 @@ def run_epoch(
             torch.autocast(device_type=device.type, enabled=amp),
         ):
             logits = model(images)
-            loss = criterion(logits, targets)
+            if training and ordinal_sigma > 0:
+                loss = criterion(logits, ordinal_soft_targets(targets, ordinal_sigma))
+            else:
+                loss = criterion(logits, targets)
         if not torch.isfinite(loss):
             raise FloatingPointError(
                 "Non-finite loss; stop and inspect input/model values"
