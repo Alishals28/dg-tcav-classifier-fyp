@@ -1,0 +1,10 @@
+# Base: experiments/001_resnet18_b8_p20/config.yaml (accepted baseline).
+# Change: downsample the whole 128^3 field of view to 96^3 (trilinear) before the network. Same model,
+# seeds and budget. Hypothesis: fewer input voxels reduce overfitting; about 2.4x fewer voxels per epoch.
+extends: ../001_resnet18_b8_p20/config.yaml
+
+experiment:
+  name: exp006_input96
+
+data:
+  input_size: 96
