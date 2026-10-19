@@ -1,0 +1,5 @@
+- Hypothesis: our earlier ResNet-18 underfit and stopped early because batch 2 made BatchNorm noisy and patience 10 was too short.
+- Change: ResNet-18 random init, batch 8, patience 20 (else as before: weighted CE, AdamW 1e-4 cosine/50 ep, AMP, no aug)
+- Result: val macro-F1 0.374 ± 0.010 (seeds 0.375/0.383/0.363), bal-acc 0.382; per-class F1 CN 0.66, EMCI 0.28, LMCI 0.24, AD 0.32. Train bal-acc reaches 1.00 (loss -> 0.00): now heavily overfit.
+- Verdict: accept (phase A baseline; beats the earlier single runs 0.30/0.33, lowest seed spread of the baselines)
+- Next idea: attack the overfit gap (augmentation, EMA, lower resolution, regularisation).

@@ -1,0 +1,5 @@
+- Hypothesis: MedicalNet pretraining (Adeel's settings: batch 4, balanced sampler, unweighted CE, patience 15, 100 ep) learns better features than random init on 535 scans.
+- Change: MedicalNet-pretrained ResNet-18, Adeel's settings, repointed to the fixed split
+- Result: val macro-F1 0.381 ± 0.033 (0.345/0.409/0.391), bal-acc 0.386; per-class F1 CN 0.64, EMCI 0.27, LMCI 0.25, AD 0.36. Gain vs 001 = +0.007 < max std 0.033: inside noise. Slower to fit (train bal-acc 0.49-0.93).
+- Verdict: inconclusive (vs 001; not distinguishable, 3x the seed spread)
+- Next idea: keep as second candidate; retry pretraining later with 001's settings plus augmentation/discriminative LR so only the init differs.

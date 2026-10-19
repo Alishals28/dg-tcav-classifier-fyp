@@ -1,0 +1,13 @@
+{
+  "kernel": "khizerinam08/dgtcav-exp-003-classifiercnn-adeel",
+  "private": true,
+  "commit": "64fb74491ad1e61f8fc249408e500a73a55946ad",
+  "branch": "exp/autoresearch-20261019",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "machine": "NvidiaTeslaT4",
+  "launched_utc": "2026-10-19T16:13:39+00:00"
+}

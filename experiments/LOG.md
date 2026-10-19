@@ -11,6 +11,10 @@ With 112 validation subjects, single-run differences below about 0.03 macro-F1 a
 ## Results
 
 <!-- table:start -->
+| id | change | val macro-F1 mean±std | bal-acc mean±std | worst-class F1 (class) | seeds | verdict |
+| --- | --- | --- | --- | --- | --- | --- |
+| 001 | ResNet-18 random init, batch 8, patience 20 (else as before: weighted CE, AdamW 1e-4 cosine/50 ep, AMP, no aug) | 0.374 ± 0.010 | 0.382 ± 0.005 | 0.239 (LMCI) | 3 | accept |
+| 002 | MedicalNet-pretrained ResNet-18, Adeel's settings, repointed to the fixed split | 0.381 ± 0.033 | 0.386 ± 0.038 | 0.251 (LMCI) | 3 | inconclusive |
 <!-- table:end -->
 
 Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patience 10, seed 42, two runs on
