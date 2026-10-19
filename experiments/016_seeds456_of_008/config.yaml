@@ -1,0 +1,6 @@
+# Base: experiments/008_ordinal_soft/config.yaml, identical settings (004 + ordinal soft labels sigma 0.6).
+# Purpose: seeds 4, 5, 6 of 008, for the matched 6-seed comparison against 004 (+015).
+extends: ../008_ordinal_soft/config.yaml
+
+experiment:
+  name: exp016_seeds456_of_008

@@ -1,0 +1,7 @@
+# Base: experiments/004_gpu_augment/config.yaml, identical settings.
+# Purpose: seeds 4, 5, 6 of the 004 baseline, to compare 004 and 008 on 6 matched seeds (008 was +0.025 vs 004
+# with a 0.026 noise margin on 3 seeds). No change; not an improvement candidate by itself.
+extends: ../004_gpu_augment/config.yaml
+
+experiment:
+  name: exp015_seeds456_of_004

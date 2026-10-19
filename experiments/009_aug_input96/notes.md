@@ -1,0 +1,5 @@
+- Hypothesis: combining the two accepted changes (004 augmentation, 006 96^3 input) adds up.
+- Change: 004 + 96^3 input (data.input_size 96)
+- Result: val macro-F1 0.418 ± 0.017 (0.431/0.424/0.399), bal-acc 0.424, AUC 0.670; F1 CN 0.63, EMCI 0.29, LMCI 0.31, AD 0.44. Gain vs 004 +0.009 < max std 0.025. 27-37 s/epoch vs about 53 for 128^3.
+- Verdict: inconclusive (vs 004; no measurable gain, but no loss and about 1.4x cheaper)
+- Next idea: 96^3 is a non-inferior, cheaper base for later screens; accuracy-wise 004 stays the baseline.

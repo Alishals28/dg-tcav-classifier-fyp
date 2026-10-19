@@ -1,0 +1,5 @@
+- Hypothesis: EMCI (F1 0.18 in 004) is mostly confused with CN and AD; ordinal soft labels (CN < EMCI < LMCI < AD) make neighbouring-stage errors cheaper than distant ones and help the middle classes.
+- Change: 004 + ordinal Gaussian soft labels during training (sigma 0.6)
+- Result: val macro-F1 0.434 ± 0.026 (0.406/0.456/0.442), bal-acc 0.436, AUC 0.702 (004: 0.646); F1 CN 0.59, EMCI 0.32, LMCI 0.31, AD 0.52. First setup with every class F1 >= 0.30. Gain vs 004 +0.025 vs max std 0.026.
+- Verdict: inconclusive (vs 004; misses the noise margin by 0.001, though AUC, bal-acc and every seed move the same way)
+- Next idea: confirm with seeds 4-6 for both 004 and 008 (exp 015/016), giving a matched 6-seed comparison.

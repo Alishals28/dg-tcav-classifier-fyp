@@ -19,6 +19,8 @@ With 112 validation subjects, single-run differences below about 0.03 macro-F1 a
 | 004 | 001 + GPU augmentation (rotation ±8°, scale ±8%, translation ±4 vox, p 0.8; foreground gain/shift 0.1) | 0.410 ± 0.025 | 0.414 ± 0.029 | 0.182 (EMCI) | 3 | accept |
 | 005 | 001 + EMA of weights (decay 0.998 from step 0; validation/checkpoints use EMA weights) | 0.146 ± 0.055 | 0.254 ± 0.006 | 0.000 (LMCI) | 3 | reject |
 | 006 | 001 with data.input_size 96 (trilinear downsample on CPU in the data loader) | 0.394 ± 0.014 | 0.391 ± 0.009 | 0.248 (LMCI) | 3 | accept |
+| 008 | 004 + ordinal Gaussian soft labels during training (sigma 0.6) | 0.434 ± 0.026 | 0.436 ± 0.032 | 0.308 (LMCI) | 3 | inconclusive |
+| 009 | 004 + 96^3 input (data.input_size 96) | 0.418 ± 0.017 | 0.424 ± 0.014 | 0.294 (EMCI) | 3 | inconclusive |
 <!-- table:end -->
 
 Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patience 10, seed 42, two runs on

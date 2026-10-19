@@ -1,0 +1,14 @@
+{
+  "kernel": "khizerinam08/dgtcav-exp-011-groupnorm",
+  "account": "khizer",
+  "private": true,
+  "commit": "ba760fbfab12e5f19746267d974a86423fc706d5",
+  "branch": "exp/autoresearch-20261019",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "machine": "NvidiaTeslaT4",
+  "launched_utc": "2026-10-19T22:14:05+00:00"
+}
