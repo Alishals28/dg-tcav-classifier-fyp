@@ -1,0 +1,11 @@
+# Base: experiments/004_gpu_augment/config.yaml (accepted baseline).
+# Change: EMA of weights, decay 0.998 with warm-up min(0.998, (1+n)/(10+n)) (fixes exp 005, where EMA without
+# warm-up lagged near the random init and every seed was stopped as collapsed). Validation and checkpoints use
+# the EMA weights.
+extends: ../004_gpu_augment/config.yaml
+
+experiment:
+  name: exp014_ema_warmup
+
+training:
+  ema_decay: 0.998

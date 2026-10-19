@@ -1,0 +1,5 @@
+- Hypothesis: averaging weights over about 7 epochs (EMA 0.998) smooths the noisy validation curve and regularises 001.
+- Change: 001 + EMA of weights (decay 0.998 from step 0; validation/checkpoints use EMA weights)
+- Result: val macro-F1 0.146 ± 0.055. Every seed was stopped by the dead-run rule (epochs 6-10): the EMA model predicted one class while the live model was learning (train bal-acc 0.37-0.43). Cause: no decay warm-up, so after about 400 steps the EMA weights are still about 45% the random init (0.998^400).
+- Verdict: reject (as implemented; -0.227 vs 001, worse beyond noise). Not a fair test of EMA itself.
+- Next idea: 014 retests EMA with the standard warm-up min(0.998, (1+n)/(10+n)) on top of 004.

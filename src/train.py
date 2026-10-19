@@ -86,6 +86,21 @@ def parameter_groups(model: torch.nn.Module, lr: float, backbone_lr_scale: float
     return [{"params": head, "lr": lr}, {"params": backbone, "lr": lr * backbone_lr_scale}]
 
 
+def ema_with_warmup(decay: float):
+    """EMA whose decay ramps up as min(decay, (1 + n) / (10 + n)) over the first updates.
+
+    A fixed 0.998 from step 0 keeps the averaged weights near the random init for hundreds of
+    steps (exp 005: every seed collapsed to one class on validation).
+    """
+
+    def update(averaged: list[torch.Tensor], current: list[torch.Tensor], num_averaged: torch.Tensor) -> None:
+        step = float(num_averaged)
+        effective = min(decay, (1.0 + step) / (10.0 + step))
+        torch._foreach_lerp_(averaged, current, 1.0 - effective)
+
+    return update
+
+
 def make_scheduler(optimizer: torch.optim.Optimizer, settings: dict) -> torch.optim.lr_scheduler.LRScheduler:
     """Cosine decay per epoch; optional linear warmup over the first warmup_epochs."""
     warmup = int(settings.get("warmup_epochs", 0))
@@ -195,7 +210,7 @@ def train(config, resume=None, stop_after_epoch=None):
             raise ValueError("Resuming EMA runs is not supported")
         ema = torch.optim.swa_utils.AveragedModel(
             model,
-            multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(settings["ema_decay"]),
+            multi_avg_fn=ema_with_warmup(settings["ema_decay"]),
             use_buffers=True,
         )
     scaler = torch.amp.GradScaler(

@@ -17,6 +17,7 @@ With 112 validation subjects, single-run differences below about 0.03 macro-F1 a
 | 002 | MedicalNet-pretrained ResNet-18, Adeel's settings, repointed to the fixed split | 0.381 ± 0.033 | 0.386 ± 0.038 | 0.251 (LMCI) | 3 | inconclusive |
 | 003 | ClassifierCNN with Adeel's committed settings (epochs capped 100 -> 40 for budget) | 0.201 ± 0.120 | 0.284 ± 0.078 | 0.029 (LMCI) | 3 | reject |
 | 004 | 001 + GPU augmentation (rotation ±8°, scale ±8%, translation ±4 vox, p 0.8; foreground gain/shift 0.1) | 0.410 ± 0.025 | 0.414 ± 0.029 | 0.182 (EMCI) | 3 | accept |
+| 005 | 001 + EMA of weights (decay 0.998 from step 0; validation/checkpoints use EMA weights) | 0.146 ± 0.055 | 0.254 ± 0.006 | 0.000 (LMCI) | 3 | reject |
 | 006 | 001 with data.input_size 96 (trilinear downsample on CPU in the data loader) | 0.394 ± 0.014 | 0.391 ± 0.009 | 0.248 (LMCI) | 3 | accept |
 <!-- table:end -->
 

@@ -1,0 +1,14 @@
+{
+  "kernel": "mabdullahtahir1/dgtcav-exp-007-long-schedule",
+  "account": "abt",
+  "private": true,
+  "commit": "30dc865c44710a30715e32e0ce32edd3d53af59c",
+  "branch": "exp/autoresearch-20261019",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "machine": "NvidiaTeslaT4",
+  "launched_utc": "2026-10-19T20:26:07+00:00"
+}
