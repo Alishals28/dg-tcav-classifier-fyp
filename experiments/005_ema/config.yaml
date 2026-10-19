@@ -1,0 +1,10 @@
+# Base: experiments/001_resnet18_b8_p20/config.yaml (accepted baseline).
+# Change: exponential moving average of weights (decay 0.998 per step, about 7 epochs of averaging at
+# 67 steps/epoch). Validation, early stopping and checkpoints use the EMA weights. Same seeds and budget.
+extends: ../001_resnet18_b8_p20/config.yaml
+
+experiment:
+  name: exp005_ema
+
+training:
+  ema_decay: 0.998

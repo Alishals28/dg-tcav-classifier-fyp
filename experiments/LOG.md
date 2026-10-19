@@ -46,3 +46,10 @@ Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patien
 - Dead-run rule (training.dead_run_epochs = 6): stop a seed when validation predicts a single class for
   6 consecutive epochs. Logged in dead_run.json and counted as that seed's result at its best epoch.
 - Seeds 1, 2, 3 for every experiment.
+- Kaggle allows 2 concurrent GPU sessions, so experiments run in pairs. Experiments launched in parallel are
+  each judged against the same accepted baseline; accepted changes are combined in a later experiment.
+- Pre-existing test failures (also on main): 8 tests in tests/test_dataset.py and tests/test_smoke_training.py
+  fail because the synthetic volumes no longer match the reference grid that configs/base.yaml now requires.
+  Not caused by this branch; model/engine/metrics tests pass. New options were checked on CPU directly.
+- 004 uses GPU batch augmentation (src/engine.py gpu_augment) instead of torchio: CPU affine on 128^3 with
+  4 vCPUs shared by two seeds would roughly double epoch time.
