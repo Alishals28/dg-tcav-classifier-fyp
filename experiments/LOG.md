@@ -15,6 +15,7 @@ With 112 validation subjects, single-run differences below about 0.03 macro-F1 a
 | --- | --- | --- | --- | --- | --- | --- |
 | 001 | ResNet-18 random init, batch 8, patience 20 (else as before: weighted CE, AdamW 1e-4 cosine/50 ep, AMP, no aug) | 0.374 ± 0.010 | 0.382 ± 0.005 | 0.239 (LMCI) | 3 | accept |
 | 002 | MedicalNet-pretrained ResNet-18, Adeel's settings, repointed to the fixed split | 0.381 ± 0.033 | 0.386 ± 0.038 | 0.251 (LMCI) | 3 | inconclusive |
+| 003 | ClassifierCNN with Adeel's committed settings (epochs capped 100 -> 40 for budget) | 0.201 ± 0.120 | 0.284 ± 0.078 | 0.029 (LMCI) | 3 | reject |
 <!-- table:end -->
 
 Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patience 10, seed 42, two runs on

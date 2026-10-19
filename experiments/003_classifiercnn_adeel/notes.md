@@ -1,0 +1,5 @@
+- Hypothesis: Adeel's ClassifierCNN (instance norm, Adam 1e-3, balanced sampler, blur aug) generalises better than ResNet-18 on 535 scans.
+- Change: ClassifierCNN with Adeel's committed settings (epochs capped 100 -> 40 for budget)
+- Result: val macro-F1 0.201 ± 0.120 (0.338 / 0.114 / 0.152). Seeds 2 and 3 collapsed to one class (dead-run stop at epochs 9 and 6; train loss stuck at ln 4 = 1.386); seed 1 sat at ln 4 for about 10 epochs, then learned. 130 s/epoch (2.6x ResNet-18).
+- Verdict: reject (vs 001: -0.172, worse beyond max std 0.120; Adam 1e-3 with this init rarely escapes the uniform-output plateau)
+- Next idea: not pursued further; a lower LR or warmup might rescue it, but ResNet-18 is cheaper and already better.
