@@ -17,6 +17,7 @@ With 112 validation subjects, single-run differences below about 0.03 macro-F1 a
 | 002 | MedicalNet-pretrained ResNet-18, Adeel's settings, repointed to the fixed split | 0.381 ± 0.033 | 0.386 ± 0.038 | 0.251 (LMCI) | 3 | inconclusive |
 | 003 | ClassifierCNN with Adeel's committed settings (epochs capped 100 -> 40 for budget) | 0.201 ± 0.120 | 0.284 ± 0.078 | 0.029 (LMCI) | 3 | reject |
 | 004 | 001 + GPU augmentation (rotation ±8°, scale ±8%, translation ±4 vox, p 0.8; foreground gain/shift 0.1) | 0.410 ± 0.025 | 0.414 ± 0.029 | 0.182 (EMCI) | 3 | accept |
+| 006 | 001 with data.input_size 96 (trilinear downsample on CPU in the data loader) | 0.394 ± 0.014 | 0.391 ± 0.009 | 0.248 (LMCI) | 3 | accept |
 <!-- table:end -->
 
 Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patience 10, seed 42, two runs on
@@ -55,3 +56,6 @@ Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patien
   Not caused by this branch; model/engine/metrics tests pass. New options were checked on CPU directly.
 - 004 uses GPU batch augmentation (src/engine.py gpu_augment) instead of torchio: CPU affine on 128^3 with
   4 vCPUs shared by two seeds would roughly double epoch time.
+- 2026-10-19 19:50 UTC: Kaggle left 005 QUEUED for over 2 h, while a later kernel (008) started at once. A queued
+  kernel counts toward the 2-session limit, so 005 also blocked a slot. Deleted the empty 005 kernel and relaunched
+  it with the same config and seeds; no outputs existed.

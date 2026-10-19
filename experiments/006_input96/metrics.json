@@ -1,0 +1,255 @@
+{
+  "experiment": "006_input96",
+  "kernel": "khizerinam08/dgtcav-exp-006-input96",
+  "commit": "1397ff9ff91e4e4693db2b3f444157df94f7c323",
+  "seeds_requested": [
+    1,
+    2,
+    3
+  ],
+  "seeds_finished": [
+    1,
+    2,
+    3
+  ],
+  "per_seed": {
+    "1": {
+      "macro_f1": 0.39351851851851855,
+      "balanced_accuracy": 0.39539921231650554,
+      "accuracy": 0.4642857142857143,
+      "macro_roc_auc_ovr": 0.6050602278687126,
+      "per_class_f1": {
+        "CN": 0.6296296296296297,
+        "EMCI": 0.2,
+        "LMCI": 0.3,
+        "AD": 0.4444444444444444
+      },
+      "per_class_recall": {
+        "CN": 0.6938775510204082,
+        "EMCI": 0.16666666666666666,
+        "LMCI": 0.3,
+        "AD": 0.42105263157894735
+      },
+      "confusion_matrix": [
+        [
+          34,
+          7,
+          5,
+          3
+        ],
+        [
+          12,
+          4,
+          5,
+          3
+        ],
+        [
+          9,
+          2,
+          6,
+          3
+        ],
+        [
+          4,
+          3,
+          4,
+          8
+        ]
+      ],
+      "best_epoch": 37,
+      "epochs_run": 50,
+      "seconds_total": 1959.345963180997,
+      "seconds_per_epoch": 39.18691926361994,
+      "dead_run": null,
+      "splits_sha256": "2dcf59474671623e97f9a27e03534e590a003a3285d23f486a4c5006fc9be1a0",
+      "manifest_sha256": "44d9c943a40ee75198b7fbdc777215b5242876dabb029b207ec496f39012376c",
+      "git_commit": "1397ff9ff91e4e4693db2b3f444157df94f7c323"
+    },
+    "2": {
+      "macro_f1": 0.3803796566439912,
+      "balanced_accuracy": 0.38088077336197634,
+      "accuracy": 0.4732142857142857,
+      "macro_roc_auc_ovr": 0.6436840795823525,
+      "per_class_f1": {
+        "CN": 0.6434782608695652,
+        "EMCI": 0.2727272727272727,
+        "LMCI": 0.1935483870967742,
+        "AD": 0.4117647058823529
+      },
+      "per_class_recall": {
+        "CN": 0.7551020408163265,
+        "EMCI": 0.25,
+        "LMCI": 0.15,
+        "AD": 0.3684210526315789
+      },
+      "confusion_matrix": [
+        [
+          37,
+          7,
+          4,
+          1
+        ],
+        [
+          13,
+          6,
+          0,
+          5
+        ],
+        [
+          13,
+          2,
+          3,
+          2
+        ],
+        [
+          3,
+          5,
+          4,
+          7
+        ]
+      ],
+      "best_epoch": 25,
+      "epochs_run": 45,
+      "seconds_total": 1764.6926322270028,
+      "seconds_per_epoch": 39.21539182726673,
+      "dead_run": null,
+      "splits_sha256": "2dcf59474671623e97f9a27e03534e590a003a3285d23f486a4c5006fc9be1a0",
+      "manifest_sha256": "44d9c943a40ee75198b7fbdc777215b5242876dabb029b207ec496f39012376c",
+      "git_commit": "1397ff9ff91e4e4693db2b3f444157df94f7c323"
+    },
+    "3": {
+      "macro_f1": 0.4074579831932773,
+      "balanced_accuracy": 0.39639948084496957,
+      "accuracy": 0.49107142857142855,
+      "macro_roc_auc_ovr": 0.612842160368097,
+      "per_class_f1": {
+        "CN": 0.6386554621848739,
+        "EMCI": 0.27450980392156865,
+        "LMCI": 0.25,
+        "AD": 0.4666666666666667
+      },
+      "per_class_recall": {
+        "CN": 0.7755102040816326,
+        "EMCI": 0.2916666666666667,
+        "LMCI": 0.15,
+        "AD": 0.3684210526315789
+      },
+      "confusion_matrix": [
+        [
+          38,
+          8,
+          1,
+          2
+        ],
+        [
+          16,
+          7,
+          0,
+          1
+        ],
+        [
+          11,
+          5,
+          3,
+          1
+        ],
+        [
+          5,
+          7,
+          0,
+          7
+        ]
+      ],
+      "best_epoch": 35,
+      "epochs_run": 50,
+      "seconds_total": 1461.9769511139957,
+      "seconds_per_epoch": 29.239539022279914,
+      "dead_run": null,
+      "splits_sha256": "2dcf59474671623e97f9a27e03534e590a003a3285d23f486a4c5006fc9be1a0",
+      "manifest_sha256": "44d9c943a40ee75198b7fbdc777215b5242876dabb029b207ec496f39012376c",
+      "git_commit": "1397ff9ff91e4e4693db2b3f444157df94f7c323"
+    }
+  },
+  "aggregate": {
+    "macro_f1": {
+      "mean": 0.39378538611859576,
+      "std": 0.01354113569514837,
+      "n": 3
+    },
+    "balanced_accuracy": {
+      "mean": 0.39089315550781717,
+      "std": 0.008685388964118,
+      "n": 3
+    },
+    "accuracy": {
+      "mean": 0.4761904761904762,
+      "std": 0.013638618139749505,
+      "n": 3
+    },
+    "macro_roc_auc_ovr": {
+      "mean": 0.6205288226063873,
+      "std": 0.020427042433340183,
+      "n": 3
+    },
+    "per_class_f1": {
+      "CN": {
+        "mean": 0.6372544508946896,
+        "std": 0.007029813033171468,
+        "n": 3
+      },
+      "EMCI": {
+        "mean": 0.2490790255496138,
+        "std": 0.04251302642766557,
+        "n": 3
+      },
+      "LMCI": {
+        "mean": 0.24784946236559138,
+        "std": 0.05325838038761894,
+        "n": 3
+      },
+      "AD": {
+        "mean": 0.440958605664488,
+        "std": 0.027616473860550467,
+        "n": 3
+      }
+    },
+    "worst_class_f1": 0.24784946236559138,
+    "confusion_matrix_sum": [
+      [
+        109,
+        22,
+        10,
+        6
+      ],
+      [
+        41,
+        17,
+        5,
+        9
+      ],
+      [
+        33,
+        9,
+        12,
+        6
+      ],
+      [
+        12,
+        15,
+        8,
+        22
+      ]
+    ]
+  },
+  "runtime_hours": 1.4405598740338879,
+  "baseline": "001_resnet18_b8_p20",
+  "comparison": {
+    "baseline": "001_resnet18_b8_p20",
+    "baseline_mean": 0.37361579157757746,
+    "baseline_std": 0.009809703992704763,
+    "gain": 0.0201695945410183,
+    "threshold_max_std": 0.01354113569514837,
+    "beats_noise": true,
+    "worse_beyond_noise": false
+  }
+}

@@ -1,0 +1,5 @@
+- Hypothesis: fewer input voxels (96^3 instead of 128^3, whole field of view) reduce overfitting and cost.
+- Change: 001 with data.input_size 96 (trilinear downsample on CPU in the data loader)
+- Result: val macro-F1 0.394 ± 0.014 (0.394/0.380/0.407), bal-acc 0.391; F1 CN 0.64, EMCI 0.25, LMCI 0.25, AD 0.44. Gain vs 001 +0.020 > max std 0.014. Still memorises train (bal-acc 1.00). 29-39 s/epoch vs about 50 (CPU resizing limits the speed-up).
+- Verdict: accept (vs 001, its baseline; below the current best 004 = 0.410, so it is combined with 004 in 009)
+- Next idea: 009 = 004 augmentation + 96^3 input.

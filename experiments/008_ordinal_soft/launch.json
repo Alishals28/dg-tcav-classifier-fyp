@@ -1,0 +1,13 @@
+{
+  "kernel": "khizerinam08/dgtcav-exp-008-ordinal-soft",
+  "private": true,
+  "commit": "ee5ef6d2209c55f042ded58521fb043ff84d25f9",
+  "branch": "exp/autoresearch-20261019",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "machine": "NvidiaTeslaT4",
+  "launched_utc": "2026-10-19T19:46:29+00:00"
+}

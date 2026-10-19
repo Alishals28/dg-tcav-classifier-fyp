@@ -1,0 +1,10 @@
+# Base: experiments/004_gpu_augment/config.yaml (accepted baseline: 001 + GPU augmentation).
+# Change: add 006's accepted change, 96^3 input (data.input_size 96). Combines the two accepted changes.
+# GPU augmentation runs after the CPU downsample, so translation_voxels (4) now means 4 voxels at 96^3.
+extends: ../004_gpu_augment/config.yaml
+
+experiment:
+  name: exp009_aug_input96
+
+data:
+  input_size: 96
