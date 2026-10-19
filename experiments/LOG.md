@@ -59,3 +59,11 @@ Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patien
 - 2026-10-19 19:50 UTC: Kaggle left 005 QUEUED for over 2 h, while a later kernel (008) started at once. A queued
   kernel counts toward the 2-session limit, so 005 also blocked a slot. Deleted the empty 005 kernel and relaunched
   it with the same config and seeds; no outputs existed.
+- 2026-10-19 20:35 UTC: second Kaggle account added (mabdullahtahir1, key KAGGLE_ABT_API_KEY): 2 more concurrent
+  T4 x2 sessions. It holds its own private copies of the 768 scans and the MedicalNet weights. runner: --account.
+  All seeds of one experiment always run on one account (same Kaggle image, same T4 type).
+- Data finding: the scans have no zero voxels. Background is a constant z-scored value (-0.57 to -0.83, about 63%
+  of each volume), and the union of brain masks spans the full 128^3 cube. So (a) a fixed brain bounding-box crop
+  gains nothing and is dropped; (b) gpu_augment pads rotated-in borders with 0 instead of the background value, and
+  its "foreground" intensity shift applies to the whole volume. This is a small artefact inside the accepted 004
+  bundle, kept as is for comparability; a background-aware version is a candidate experiment.

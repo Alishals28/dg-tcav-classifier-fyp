@@ -1,0 +1,11 @@
+# Base: experiments/004_gpu_augment/config.yaml (accepted baseline).
+# Change: GroupNorm (min(32, C/4) groups) instead of BatchNorm in the ResNet-18. Hypothesis: much of the large
+# epoch-to-epoch validation swing comes from BatchNorm running statistics estimated from batches of 8;
+# GroupNorm has no train/eval mismatch.
+extends: ../004_gpu_augment/config.yaml
+
+experiment:
+  name: exp011_groupnorm
+
+model:
+  norm: group

@@ -1,0 +1,13 @@
+# Base: experiments/004_gpu_augment/config.yaml (accepted baseline).
+# Change: initialise the backbone from MedicalNet resnet_18_23dataset.pth (official Tencent weights, SHA-256 pinned)
+# instead of random init. Everything else as 004 (batch 8, weighted CE, AdamW 1e-4 cosine/50, patience 20, GPU aug).
+# 002 changed init and four other settings at once; this isolates the init.
+extends: ../004_gpu_augment/config.yaml
+
+experiment:
+  name: exp010_medicalnet_on_004
+
+model:
+  pretrained: true
+  pretrained_checkpoint: set-by-runner-to-kaggle-mount
+  pretrained_checkpoint_sha256: 61224f9317fcce873366deb3703183e92cc47325b726b69691b33536244e10f4

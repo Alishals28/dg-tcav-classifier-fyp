@@ -35,9 +35,13 @@ EXPERIMENTS_DIR: Path = REPO_ROOT / "experiments"
 RUNS_DIR: Path = REPO_ROOT / "outputs" / "exp_runs"
 LOG_PATH: Path = EXPERIMENTS_DIR / "LOG.md"
 REPO_URL: str = "https://github.com/Alishals28/dg-tcav-classifier-fyp.git"
-KAGGLE_OWNER: str = "khizerinam08"
-SCAN_DATASET: str = "khizerinam08/dg-tcav-preprocessed-128"
-WEIGHTS_DATASET: str = "khizerinam08/medicalnet-resnet18-23dataset"
+# Kaggle accounts (2 concurrent GPU sessions each). Each holds private copies of the scans and weights.
+ACCOUNTS: dict[str, dict[str, str]] = {
+    "khizer": {"owner": "khizerinam08", "key_env": "KAGGLE_KHIZER_API_KEY"},
+    "abt": {"owner": "mabdullahtahir1", "key_env": "KAGGLE_ABT_API_KEY"},
+}
+SCAN_DATASET_SLUG: str = "dg-tcav-preprocessed-128"
+WEIGHTS_DATASET_SLUG: str = "medicalnet-resnet18-23dataset"
 KAGGLE_CLI: str = str(Path.home() / ".venvs" / "kaggle" / "bin" / "kaggle")
 CLASS_NAMES: list[str] = ["CN", "EMCI", "LMCI", "AD"]
 EXPECTED_SPLITS_SHA256: str = "2dcf59474671623e97f9a27e03534e590a003a3285d23f486a4c5006fc9be1a0"
@@ -69,10 +73,11 @@ def run_command(command: list[str], env: dict[str, str] | None = None, check: bo
     return result.stdout + result.stderr
 
 
-def kaggle_env() -> dict[str, str]:
-    token = os.environ.get("KAGGLE_KHIZER_API_KEY")
+def kaggle_env(account: str) -> dict[str, str]:
+    key_env = ACCOUNTS[account]["key_env"]
+    token = os.environ.get(key_env)
     if not token:
-        raise SystemExit("KAGGLE_KHIZER_API_KEY is not set")
+        raise SystemExit(f"{key_env} is not set")
     env = dict(os.environ)
     env.pop("KAGGLE_API_KEY", None)
     env["KAGGLE_CONFIG_DIR"] = tempfile.mkdtemp()
@@ -80,8 +85,12 @@ def kaggle_env() -> dict[str, str]:
     return env
 
 
-def kaggle(arguments: list[str], check: bool = True) -> str:
-    return run_command([KAGGLE_CLI, *arguments], env=kaggle_env(), check=check)
+def kaggle(arguments: list[str], account: str, check: bool = True) -> str:
+    return run_command([KAGGLE_CLI, *arguments], env=kaggle_env(account), check=check)
+
+
+def launch_account(launch_info: dict[str, Any]) -> str:
+    return launch_info.get("account", "khizer")
 
 
 def experiment_dir(name: str) -> Path:
@@ -232,7 +241,7 @@ print("FAILED SEEDS:", failed, flush=True)
 # ---------------------------------------------------------------- launch / wait / collect
 
 
-def launch(name: str, seeds: list[int], machine: str) -> None:
+def launch(name: str, seeds: list[int], machine: str, account: str) -> None:
     path = experiment_dir(name)
     status = run_command(["git", "status", "--porcelain", "--", str(path / "config.yaml"), "src", "configs"])
     if status.strip():
@@ -252,7 +261,7 @@ def launch(name: str, seeds: list[int], machine: str) -> None:
     build = Path(tempfile.mkdtemp())
     (build / "kernel.py").write_text(kernel_source(name, commit, seeds))
     metadata = {
-        "id": f"{KAGGLE_OWNER}/{slug}",
+        "id": f"{ACCOUNTS[account]['owner']}/{slug}",
         "title": slug,
         "code_file": "kernel.py",
         "language": "python",
@@ -261,13 +270,16 @@ def launch(name: str, seeds: list[int], machine: str) -> None:
         "enable_gpu": True,
         "enable_internet": True,
         "machine_shape": machine,
-        "dataset_sources": [SCAN_DATASET, WEIGHTS_DATASET],
+        "dataset_sources": [
+            f"{ACCOUNTS[account]['owner']}/{SCAN_DATASET_SLUG}",
+            f"{ACCOUNTS[account]['owner']}/{WEIGHTS_DATASET_SLUG}",
+        ],
         "competition_sources": [],
         "kernel_sources": [],
         "model_sources": [],
     }
     write_json(build / "kernel-metadata.json", metadata)
-    output = kaggle(["kernels", "push", "-p", str(build)])
+    output = kaggle(["kernels", "push", "-p", str(build)], account)
     print(output.strip())
     if "successfully pushed" not in output:
         raise SystemExit(f"Kaggle refused the push for {name}; nothing launched")
@@ -275,6 +287,7 @@ def launch(name: str, seeds: list[int], machine: str) -> None:
         path / "launch.json",
         {
             "kernel": metadata["id"],
+            "account": account,
             "private": True,
             "commit": commit,
             "branch": branch,
@@ -287,7 +300,7 @@ def launch(name: str, seeds: list[int], machine: str) -> None:
 
 def kernel_status(name: str) -> str:
     launch_info = read_json(experiment_dir(name) / "launch.json")
-    output = kaggle(["kernels", "status", launch_info["kernel"]], check=False)
+    output = kaggle(["kernels", "status", launch_info["kernel"]], launch_account(launch_info), check=False)
     match = re.search(r'status "KernelWorkerStatus\.([A-Z_]+)"', output)
     return match.group(1) if match else output.strip()
 
@@ -318,6 +331,7 @@ def collect(name: str, baseline: str | None) -> None:
     kaggle(
         ["kernels", "output", launch_info["kernel"], "-p", str(raw), "-o", "-q",
          "--file-pattern", r"^(?!.*\.pt$).*$"],
+        launch_account(launch_info),
     )
     runs = seed_run_dirs(raw)
     per_seed: dict[str, Any] = {}
@@ -634,6 +648,7 @@ def main() -> None:
     launch_parser.add_argument("name")
     launch_parser.add_argument("--seeds", type=int, nargs="+", default=[1, 2, 3])
     launch_parser.add_argument("--machine", default="NvidiaTeslaT4")
+    launch_parser.add_argument("--account", choices=sorted(ACCOUNTS), default="khizer")
     wait_parser = commands.add_parser("wait")
     wait_parser.add_argument("name")
     wait_parser.add_argument("--poll", type=int, default=120)
@@ -647,7 +662,7 @@ def main() -> None:
     check_parser.add_argument("name")
     args = parser.parse_args()
     if args.command == "launch":
-        launch(args.name, args.seeds, args.machine)
+        launch(args.name, args.seeds, args.machine, args.account)
     elif args.command == "wait":
         wait(args.name, args.poll)
     elif args.command == "status":
