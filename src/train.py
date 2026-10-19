@@ -123,6 +123,7 @@ def train(config, resume=None, stop_after_epoch=None):
             model,
             config["model"]["pretrained_checkpoint"],
             run_dir / "medicalnet_load_report.json",
+            config["model"].get("pretrained_checkpoint_sha256"),
         )
     model.to(device)
     write_json(

@@ -93,9 +93,9 @@ loss is independent of how batches are grouped.
 |---|---|
 | Default ResNet optimizer | AdamW; learning rate 1e-4, weight decay 1e-4 |
 | ClassifierCNN optimizer | Adam; learning rate 1e-3, betas (0.9, 0.999) |
-| Schedule | Cosine decay to 1e-6 over the configured maximum (50 default; 100 for ClassifierCNN) |
+| Schedule | Cosine decay to 1e-6 over the configured maximum (50 base; 100 for transfer-learning profiles) |
 | Model selection | Highest validation macro-F1 |
-| Early stopping | 10 epochs without improvement |
+| Early stopping | 10 base; 15 for the MedicalNet Colab profile |
 | Fine-tuning | All layers, including the selected normalization layers |
 | Augmentation | Off for the initial comparison |
 
@@ -110,11 +110,10 @@ No profile adds cropping, flipping, axis swaps, or elastic deformation.
 `random_baseline.yaml` and `preprocessed_128.yaml` keep architecture, loss and
 augmentation the same, changing only initialization. This isolates the effect of
 pretraining. Changing both initialization and class weighting would confound
-that comparison. This ResNet comparison does not describe the ClassifierCNN
-profile, which has no pretrained checkpoint. The current CNN Colab workflow is
-`colab_classifier_cnn_128.yaml`; it reads copied scans from the Colab VM disk and
-writes outputs to Drive. The older `colab_preprocessed_128.yaml` and
-`colab_local_128.yaml` remain for ResNet comparison runs.
+that comparison. The active MedicalNet Colab workflow is
+`colab_medicalnet_resnet18_128.yaml`; it reads copied scans from the Colab VM disk,
+loads weights from Drive, and writes outputs to Drive. The CNN profile remains
+available as a separate comparison.
 
 ## Training and checkpoints
 

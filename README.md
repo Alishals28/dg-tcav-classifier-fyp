@@ -51,17 +51,18 @@ limitation.
 Mount Google Drive in Colab and clone this repository. The preprocessed scans
 must be available at `/content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/preprocessed_128/`.
 
-If you ever need to regenerate `classifier_inputs` from a revised preprocessing report:
+Regenerate classifier inputs from the latest preprocessing report into a new
+directory before each updated training run:
 ```bash
 ROOT=/content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS
 python -m scripts.prepare_preprocessed_manifest \
   --baseline-manifest "$ROOT/classifier_setup/cohort_a_baseline_manifest.csv" \
   --splits "$ROOT/classifier_setup/cohort_a_splits.json" \
   --preprocessing-manifest "$ROOT/classifier_setup/preprocessing_manifest.csv" \
-  --output-dir "data/preprocessed_128_classifier_inputs"
+  --output-dir "data/preprocessed_128_classifier_inputs_refresh"
 ```
 
-The output directory contains `classifier_manifest.csv`,
+The output directory must not already exist. The output contains `classifier_manifest.csv`,
 `classifier_splits.json`, and `preprocessing_summary.json`. Review the summary,
 especially the final-success count, retry count, missing-status subjects, and
 class counts by split. The training split must contain all four classes.
@@ -78,37 +79,37 @@ rsync -a --include='*_preprocessed_128.nii.gz' --exclude='*' \
   /content/preprocessed_128/
 ```
 
-`configs/colab_classifier_cnn_128.yaml` reads scans from that copy and writes
-outputs to Drive. It selects the ClassifierCNN profile, uses batch size 4, and
-enables mixed precision. Confirm that batch size fits the selected GPU before
-starting the full run. Resume a run with the exact config it started with.
+`configs/colab_medicalnet_resnet18_128.yaml` reads scans from that copy, loads
+MedicalNet weights from Drive, and writes outputs to Drive. It uses batch size 4
+and mixed precision. Confirm the checkpoint exists and the audit reports the
+intended cohort before starting the full run. Resume a run with the exact config
+it started with.
 First audit the actual files and run the small overfit check:
 
 ```bash
-python -m scripts.validate_dataset --config configs/colab_classifier_cnn_128.yaml
+python -m scripts.validate_dataset --config configs/colab_medicalnet_resnet18_128.yaml
 python -m scripts.tiny_overfit \
-  --config configs/colab_classifier_cnn_128.yaml \
+  --config configs/colab_medicalnet_resnet18_128.yaml \
   --output /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs/tiny_overfit
 ```
 
 If those checks pass, run a short trial and then the planned training run:
 
 ```bash
-python -m src.train --config configs/colab_classifier_cnn_128.yaml --stop-after-epoch 2
-python -m src.train --config configs/colab_classifier_cnn_128.yaml
+python -m src.train --config configs/colab_medicalnet_resnet18_128.yaml --stop-after-epoch 2
+python -m src.train --config configs/colab_medicalnet_resnet18_128.yaml
 ```
 
-This profile uses Adam, instance normalization, Gaussian blur, affine
-augmentation, and balanced sampling. Weighted cross-entropy is disabled to avoid
-correcting class imbalance twice. These choices are experiment settings, not a
-guarantee of stable optimization or improved accuracy.
+This profile uses AdamW, a balanced sampler, and no weighted loss to avoid
+correcting class imbalance twice. The loader records the checkpoint SHA-256 and
+can compare it with a trusted expected digest configured in the model section.
 
 Training uses train and validation images only. Choose the model using validation
 results, freeze the choices, and then evaluate the held-out test set explicitly:
 
 ```bash
 python -m src.evaluate \
-  --config configs/colab_classifier_cnn_128.yaml \
+  --config configs/colab_medicalnet_resnet18_128.yaml \
   --checkpoint PATH_TO_RUN/best.pt --split test --confirm-final-test
 ```
 
@@ -116,7 +117,7 @@ Export validation activations for later analysis:
 
 ```bash
 python -m src.export_activations \
-  --config configs/colab_classifier_cnn_128.yaml \
+  --config configs/colab_medicalnet_resnet18_128.yaml \
   --checkpoint PATH_TO_RUN/best.pt --split val \
   --output /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs/features
 ```

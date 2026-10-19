@@ -9,6 +9,7 @@ import torch
 from src.config import load_config, require_preprocessing
 from src.dataset import build_index
 from src.engine import choose_device, make_loader, run_epoch
+from src.medicalnet import load_medicalnet
 from src.model import build_model
 from src.reproducibility import set_seed
 from src.train import write_json
@@ -42,7 +43,18 @@ def main():
     subset.to_csv(out / "subjects.csv", index=False)
     device = choose_device(cfg["training"]["device"])
     model = build_model(cfg["model"], cfg["data"]["expected_shape"]).to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=1e-3, weight_decay=0.0)
+    if cfg["model"]["pretrained"]:
+        load_medicalnet(
+            model,
+            cfg["model"]["pretrained_checkpoint"],
+            out / "medicalnet_load_report.json",
+            cfg["model"].get("pretrained_checkpoint_sha256"),
+        )
+    optimizer = torch.optim.AdamW(
+        model.parameters(),
+        lr=cfg["training"]["learning_rate"] if cfg["model"]["pretrained"] else 1e-3,
+        weight_decay=cfg["training"]["weight_decay"] if cfg["model"]["pretrained"] else 0.0,
+    )
     scaler = torch.amp.GradScaler("cuda", enabled=False)
     criterion = torch.nn.CrossEntropyLoss()
     loader = make_loader(subset, "train", cfg)

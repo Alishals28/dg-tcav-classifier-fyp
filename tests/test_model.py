@@ -32,24 +32,37 @@ def test_shortcut_preserves_gradients():
 
 def test_full_width_model_and_medicalnet_load(tmp_path):
     model = ResNet18()
+    assert model.fc.in_features == 512
+    assert sum(parameter.numel() for parameter in model.fc.parameters()) == 2052
     model.eval()
     with torch.no_grad():
         assert model.forward_features(torch.randn(1, 1, 16, 16, 16)).shape == (1, 512)
     state = {
         "module." + k: v.clone()
         for k, v in model.state_dict().items()
-        if not k.startswith("fc.") and not k.endswith("num_batches_tracked")
+        if not k.startswith("fc.")
     }
     state["module.conv_seg.0.weight"] = torch.ones(1)
     path = tmp_path / "synthetic_medicalnet.pth"
     torch.save({"state_dict": state}, path)
     head = model.fc.weight.detach().clone()
-    assert load_medicalnet(model, path)["success"]
+    report = load_medicalnet(model, path)
+    assert report["success"]
+    assert report["backbone_tensor_fraction"] == 1.0
+    assert report["sha256_match"] is None
     assert torch.equal(model.fc.weight, head)
     del state["module.layer4.1.conv2.weight"]
     torch.save({"state_dict": state}, path)
     with pytest.raises(ValueError, match="incompatible"):
         load_medicalnet(model, path)
+
+
+def test_medicalnet_rejects_checkpoint_checksum_mismatch(tmp_path):
+    model = ResNet18()
+    path = tmp_path / "checkpoint.pth"
+    torch.save({"state_dict": {}}, path)
+    with pytest.raises(ValueError, match="SHA-256"):
+        load_medicalnet(model, path, expected_sha256="0" * 64)
 
 
 def test_pretrained_requires_correct_architecture():

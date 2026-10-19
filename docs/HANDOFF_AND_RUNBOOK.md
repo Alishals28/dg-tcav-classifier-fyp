@@ -74,9 +74,10 @@ updated preprocessing report; do not assume these counts remain current.
 
 ## Audit and run
 
-Use `configs/colab_classifier_cnn_128.yaml`. It reads scans from a copy on the
-Colab VM disk because reading from mounted Drive every epoch is slow; outputs
-still go to Drive. Copy the scans after each runtime reset:
+Use `configs/colab_medicalnet_resnet18_128.yaml`. It reads scans from a copy on
+the Colab VM disk because reading from mounted Drive every epoch is slow; outputs
+and the pretrained checkpoint remain on Drive. Copy the scans after each runtime
+reset:
 
 ```bash
 mkdir -p /content/preprocessed_128
@@ -85,17 +86,21 @@ rsync -a --include='*_preprocessed_128.nii.gz' --exclude='*' \
   /content/preprocessed_128/
 ```
 
-The profile uses batch size 4 with mixed precision as a starting point. Verify
-that this fits and record epoch time on the selected Colab GPU before starting a
-long run. Resume a run with the exact config it started with.
+The profile uses batch size 4 with mixed precision. Verify that this fits on the
+selected Colab GPU before starting a long run. The current tracked split has only
+535 training subjects; regenerate the classifier inputs from the latest reports
+and stop unless the resulting audit matches the intended cohort (1,112 train, if
+that is the verified current split). Resume a run with the exact config it
+started with.
 
 ```bash
-python -m scripts.validate_dataset --config configs/colab_classifier_cnn_128.yaml
+sha256sum /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/resnet_18_23dataset.pth
+python -m scripts.validate_dataset --config configs/colab_medicalnet_resnet18_128.yaml
 python -m scripts.tiny_overfit \
-  --config configs/colab_classifier_cnn_128.yaml \
+  --config configs/colab_medicalnet_resnet18_128.yaml \
   --output /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs/tiny_overfit
-python -m src.train --config configs/colab_classifier_cnn_128.yaml --stop-after-epoch 2
-python -m src.train --config configs/colab_classifier_cnn_128.yaml
+python -m src.train --config configs/colab_medicalnet_resnet18_128.yaml --stop-after-epoch 2
+python -m src.train --config configs/colab_medicalnet_resnet18_128.yaml
 ```
 
 Training uses train and validation images only. Select the model using validation
@@ -103,7 +108,7 @@ results, freeze choices, then evaluate the held-out test split:
 
 ```bash
 python -m src.evaluate \
-  --config configs/colab_classifier_cnn_128.yaml \
+  --config configs/colab_medicalnet_resnet18_128.yaml \
   --checkpoint PATH_TO_RUN/best.pt --split test --confirm-final-test
 ```
 
@@ -113,7 +118,7 @@ the classifier inputs and start a new run rather than resuming a checkpoint
 trained on a different subject set. Synthetic checks do not measure diagnostic
 performance.
 
-The older `colab_local_128.yaml` and `kaggle_128.yaml` profiles remain for
-ResNet comparison runs. The Kaggle kernel launcher now selects the
-`ClassifierCNN` profile and discovers the attached scan folder and `.nii` or
-`.nii.gz` suffix at runtime.
+`configs/colab_classifier_cnn_128.yaml` remains available for the CNN comparison.
+The MedicalNet load report records the computed checkpoint SHA-256 and loaded
+backbone tensor fraction. Set `model.pretrained_checkpoint_sha256` to a trusted
+expected digest if you want training to reject any other checkpoint.

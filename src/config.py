@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from copy import deepcopy
 from pathlib import Path
 from typing import Any
@@ -156,6 +157,11 @@ def _validate_config(config: dict[str, Any]) -> None:
         raise ValueError("ClassifierCNN norm_type must be instance or batch")
     if config["model"]["pretrained"] and not config["model"]["pretrained_checkpoint"]:
         raise ValueError("Pretrained training requires a checkpoint path")
+    checkpoint_sha256 = config["model"].get("pretrained_checkpoint_sha256")
+    if checkpoint_sha256 is not None and not re.fullmatch(
+        r"[0-9a-fA-F]{64}", checkpoint_sha256
+    ):
+        raise ValueError("pretrained_checkpoint_sha256 must be a 64-character hex digest")
     if architecture == "ClassifierCNN" and config["model"]["pretrained"]:
         raise ValueError("MedicalNet weights are supported only by ResNet18")
 
