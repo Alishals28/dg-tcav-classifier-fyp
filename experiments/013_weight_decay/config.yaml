@@ -1,0 +1,10 @@
+# Base: experiments/004_gpu_augment/config.yaml (accepted baseline).
+# Change: AdamW weight decay 1e-4 -> 5e-2 (decoupled, applied to all weights). Targets the remaining
+# train/val gap in 004 (train bal-acc 0.76-0.86 vs val about 0.41).
+extends: ../004_gpu_augment/config.yaml
+
+experiment:
+  name: exp013_weight_decay
+
+training:
+  weight_decay: 0.05

@@ -1,0 +1,16 @@
+# Base: experiments/004_gpu_augment/config.yaml (accepted baseline).
+# Change: stronger GPU augmentation (one bundle): rotation 8 -> 15 deg, scale 8% -> 15%, translation 4 -> 8 voxels,
+# intensity gain/shift std 0.1 -> 0.2, p 0.8 -> 0.9. Augmentation gave the only large gain so far (001 -> 004),
+# and 004 still shows a train/val gap (train bal-acc 0.76-0.86 vs val about 0.41).
+extends: ../004_gpu_augment/config.yaml
+
+experiment:
+  name: exp012_strong_augment
+
+gpu_augmentation:
+  p: 0.9
+  degrees: 15
+  scales: 0.15
+  translation_voxels: 8
+  intensity_std: 0.2
+  intensity_shift: 0.2
