@@ -67,3 +67,8 @@ Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patien
   gains nothing and is dropped; (b) gpu_augment pads rotated-in borders with 0 instead of the background value, and
   its "foreground" intensity shift applies to the whole volume. This is a small artefact inside the accepted 004
   bundle, kept as is for comparability; a background-aware version is a candidate experiment.
+- 2026-10-19 20:55 UTC, free check (no GPU): averaging the 3 seeds' validation probabilities does not help.
+  001 0.374 -> 0.365, 002 0.381 -> 0.383, 004 0.410 -> 0.398, 006 0.394 -> 0.359 (per-seed mean -> ensemble macro-F1).
+  Reading: each seed's number comes from its best epoch, chosen on the same 112 validation subjects, so per-seed scores
+  are optimistically biased; the fixed-rule ensemble has no such selection. All experiments share this bias, so
+  comparisons stay fair, but expect lower absolute numbers on the locked test set. Seed ensembling (idea F) dropped.

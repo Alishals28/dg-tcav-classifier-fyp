@@ -242,5 +242,14 @@
     ]
   },
   "runtime_hours": 2.0357613853588883,
-  "baseline": null
+  "baseline": "001_resnet18_b8_p20",
+  "comparison": {
+    "baseline": "001_resnet18_b8_p20",
+    "baseline_mean": 0.37361579157757746,
+    "baseline_std": 0.009809703992704763,
+    "gain": 0.007848061310145593,
+    "threshold_max_std": 0.032998072315108665,
+    "beats_noise": false,
+    "worse_beyond_noise": false
+  }
 }
