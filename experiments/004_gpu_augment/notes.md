@@ -1,0 +1,5 @@
+- Hypothesis: 001 memorises the training set (train bal-acc 1.00); spatial + intensity augmentation will close part of the gap.
+- Change: 001 + GPU augmentation (rotation ±8°, scale ±8%, translation ±4 vox, p 0.8; foreground gain/shift 0.1)
+- Result: val macro-F1 0.410 ± 0.025 (0.398/0.392/0.438), bal-acc 0.414; F1 CN 0.60, EMCI 0.18, LMCI 0.39, AD 0.46. Gain vs 001 +0.036 > max std 0.025. Train bal-acc now ends at 0.76-0.86; all seeds ran 50 epochs, best epochs 37-47 (still improving at the end).
+- Verdict: accept (new baseline). EMCI is now the worst class (mostly predicted CN or AD).
+- Next idea: longer schedule (best epochs at the end of cosine), then target EMCI (ordinal / hierarchical framing).

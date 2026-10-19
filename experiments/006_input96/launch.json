@@ -1,0 +1,13 @@
+{
+  "kernel": "khizerinam08/dgtcav-exp-006-input96",
+  "private": true,
+  "commit": "1397ff9ff91e4e4693db2b3f444157df94f7c323",
+  "branch": "exp/autoresearch-20261019",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "machine": "NvidiaTeslaT4",
+  "launched_utc": "2026-10-19T17:52:40+00:00"
+}
