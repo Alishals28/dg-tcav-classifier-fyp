@@ -238,6 +238,7 @@ def train(config, resume=None, stop_after_epoch=None):
             settings["gradient_clip_norm"],
             desc=f"Epoch {epoch}/{settings['epochs']} [Train]",
             ema=ema,
+            augment=config.get("gpu_augmentation") if config.get("gpu_augmentation", {}).get("enabled") else None,
         )
         # With EMA, validation and the saved checkpoints use the averaged weights.
         evaluated = ema.module if ema is not None else model

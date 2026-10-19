@@ -1,0 +1,17 @@
+# Base: experiments/001_resnet18_b8_p20/config.yaml (accepted baseline; -> configs/kaggle_128.yaml).
+# Change (one bundle): GPU augmentation on training batches, i.e. random rotation +-8 deg per axis,
+# isotropic scale +-8%, translation +-4 voxels (p = 0.8), then foreground intensity gain N(1, 0.1)
+# and shift N(0, 0.1). No flips. Same epochs (50), patience (20) and seeds as 001.
+extends: ../001_resnet18_b8_p20/config.yaml
+
+experiment:
+  name: exp004_gpu_augment
+
+gpu_augmentation:
+  enabled: true
+  p: 0.8
+  degrees: 8
+  scales: 0.08
+  translation_voxels: 4
+  intensity_std: 0.1
+  intensity_shift: 0.1

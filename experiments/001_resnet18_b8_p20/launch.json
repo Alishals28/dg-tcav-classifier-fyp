@@ -1,0 +1,13 @@
+{
+  "kernel": "khizerinam08/dgtcav-exp-001-resnet18-b8-p20",
+  "private": true,
+  "commit": "f6f88daa9c4ce5afc5a006e3ee48b67203d036d2",
+  "branch": "exp/autoresearch-20261019",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "machine": "NvidiaTeslaT4",
+  "launched_utc": "2026-10-19T14:54:09+00:00"
+}

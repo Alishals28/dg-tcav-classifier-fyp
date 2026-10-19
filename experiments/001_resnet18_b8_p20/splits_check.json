@@ -1,0 +1,27 @@
+{
+  "manifest_path": "data/preprocessed_128_classifier_inputs/classifier_manifest.csv",
+  "splits_path": "data/preprocessed_128_classifier_inputs/classifier_splits.json",
+  "manifest_sha256": "44d9c943a40ee75198b7fbdc777215b5242876dabb029b207ec496f39012376c",
+  "splits_sha256": "2dcf59474671623e97f9a27e03534e590a003a3285d23f486a4c5006fc9be1a0",
+  "class_counts": {
+    "train": {
+      "CN": 215,
+      "EMCI": 131,
+      "LMCI": 112,
+      "AD": 77
+    },
+    "val": {
+      "CN": 49,
+      "EMCI": 24,
+      "LMCI": 20,
+      "AD": 19
+    },
+    "test": {
+      "CN": 47,
+      "EMCI": 31,
+      "LMCI": 24,
+      "AD": 19
+    }
+  },
+  "passed": true
+}

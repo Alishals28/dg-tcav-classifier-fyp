@@ -1,10 +1,12 @@
 """Data loaders, class weights and the epoch loop shared by training and evaluation."""
 
+import math
 import random
 
 import numpy as np
 import torch
 from torch import nn
+from torch.nn import functional as F
 from torch.utils.data import DataLoader, WeightedRandomSampler
 
 try:
@@ -70,6 +72,36 @@ def make_loader(index, split, config, generator=None):
     )
 
 
+def gpu_augment(images: torch.Tensor, settings: dict) -> torch.Tensor:
+    """Batched random affine + intensity jitter on the GPU; zero background stays zero.
+
+    Per sample: rotations up to +-degrees about each axis, isotropic scale 1 +- scales,
+    translation up to +-translation_voxels, applied with probability p; then a
+    foreground intensity scale 1 + N(0, intensity_std) and shift N(0, intensity_shift).
+    """
+    n = images.shape[0]
+    device = images.device
+    p = settings.get("p", 0.8)
+    active = (torch.rand(n, device=device) < p).float().view(n, 1, 1)
+    angles = (torch.rand(n, 3, device=device) * 2 - 1) * math.radians(settings.get("degrees", 5)) * active[:, :, 0]
+    cos, sin = angles.cos(), angles.sin()
+    one, zero = torch.ones(n, device=device), torch.zeros(n, device=device)
+    rx = torch.stack([one, zero, zero, zero, cos[:, 0], -sin[:, 0], zero, sin[:, 0], cos[:, 0]], 1).view(n, 3, 3)
+    ry = torch.stack([cos[:, 1], zero, sin[:, 1], zero, one, zero, -sin[:, 1], zero, cos[:, 1]], 1).view(n, 3, 3)
+    rz = torch.stack([cos[:, 2], -sin[:, 2], zero, sin[:, 2], cos[:, 2], zero, zero, zero, one], 1).view(n, 3, 3)
+    scale = 1 + (torch.rand(n, 1, 1, device=device) * 2 - 1) * settings.get("scales", 0.05) * active
+    matrix = rz @ ry @ rx * scale
+    size = images.shape[-1]
+    shift = (torch.rand(n, 3, 1, device=device) * 2 - 1) * settings.get("translation_voxels", 3) * 2 / size * active
+    theta = torch.cat([matrix, shift], 2)
+    grid = F.affine_grid(theta, list(images.shape), align_corners=False)
+    images = F.grid_sample(images, grid, mode="bilinear", padding_mode="zeros", align_corners=False)
+    foreground = (images != 0).float()
+    gain = 1 + torch.randn(n, 1, 1, 1, 1, device=device) * settings.get("intensity_std", 0.1)
+    offset = torch.randn(n, 1, 1, 1, 1, device=device) * settings.get("intensity_shift", 0.1)
+    return images * gain + offset * foreground
+
+
 def run_epoch(
     model,
     loader,
@@ -80,6 +112,7 @@ def run_epoch(
     clip_norm=0.0,
     desc=None,
     ema=None,
+    augment=None,
 ):
     """Return epoch metrics and predictions with their subject IDs.
 
@@ -96,6 +129,9 @@ def run_epoch(
     for batch in iterator:
         images = batch["image"].to(device, non_blocking=True)
         targets = batch["label"].to(device, non_blocking=True)
+        if training and augment:
+            with torch.no_grad():
+                images = gpu_augment(images, augment)
         if training:
             optimizer.zero_grad(set_to_none=True)
         amp = bool(scaler is not None and scaler.is_enabled())

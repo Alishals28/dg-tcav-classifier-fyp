@@ -234,7 +234,7 @@ print("FAILED SEEDS:", failed, flush=True)
 
 def launch(name: str, seeds: list[int], machine: str) -> None:
     path = experiment_dir(name)
-    status = run_command(["git", "status", "--porcelain", "--", str(path), "src", "configs"])
+    status = run_command(["git", "status", "--porcelain", "--", str(path / "config.yaml"), "src", "configs"])
     if status.strip():
         raise SystemExit(f"Commit the experiment config and code first:\n{status}")
     commit = run_command(["git", "rev-parse", "HEAD"]).strip()
