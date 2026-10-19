@@ -71,6 +71,42 @@ def restore_rng(state, generator):
         torch.cuda.set_rng_state_all(state["cuda"])
 
 
+def model_input_shape(data_config: dict) -> list[int]:
+    size = data_config.get("input_size")
+    return [size] * 3 if size else list(data_config["expected_shape"])
+
+
+def parameter_groups(model: torch.nn.Module, lr: float, backbone_lr_scale: float) -> list[dict]:
+    """Head at the base learning rate; backbone scaled (1.0 = one group, as before)."""
+    if backbone_lr_scale == 1.0:
+        return [{"params": list(model.parameters())}]
+    head_names = ("fc.", "classifier.")
+    head = [p for n, p in model.named_parameters() if n.startswith(head_names)]
+    backbone = [p for n, p in model.named_parameters() if not n.startswith(head_names)]
+    return [{"params": head, "lr": lr}, {"params": backbone, "lr": lr * backbone_lr_scale}]
+
+
+def make_scheduler(optimizer: torch.optim.Optimizer, settings: dict) -> torch.optim.lr_scheduler.LRScheduler:
+    """Cosine decay per epoch; optional linear warmup over the first warmup_epochs."""
+    warmup = int(settings.get("warmup_epochs", 0))
+    if warmup <= 0:
+        return torch.optim.lr_scheduler.CosineAnnealingLR(
+            optimizer, T_max=settings["epochs"], eta_min=settings["min_learning_rate"]
+        )
+    import math
+
+    floor = settings["min_learning_rate"] / settings["learning_rate"]
+    span = max(1, settings["epochs"] - warmup)
+
+    def factor(epoch: int) -> float:
+        if epoch < warmup:
+            return (epoch + 1) / warmup
+        progress = min(1.0, (epoch - warmup) / span)
+        return floor + (1.0 - floor) * 0.5 * (1.0 + math.cos(math.pi * progress))
+
+    return torch.optim.lr_scheduler.LambdaLR(optimizer, factor)
+
+
 def train(config, resume=None, stop_after_epoch=None):
     """Run training and validation, returning the run's output directory."""
     if stop_after_epoch is not None and stop_after_epoch < 1:
@@ -117,7 +153,7 @@ def train(config, resume=None, stop_after_epoch=None):
         index, "val", config, torch.Generator().manual_seed(seed + 1)
     )
     weights = class_weights(index) if config["training"]["weighted_loss"] else None
-    model = build_model(config["model"], config["data"]["expected_shape"])
+    model = build_model(config["model"], model_input_shape(config["data"]))
     if state is None and config["model"]["pretrained"]:
         load_medicalnet(
             model,
@@ -136,7 +172,8 @@ def train(config, resume=None, stop_after_epoch=None):
     )
     settings = config["training"]
     criterion = torch.nn.CrossEntropyLoss(
-        weight=weights.to(device) if weights is not None else None
+        weight=weights.to(device) if weights is not None else None,
+        label_smoothing=settings.get("label_smoothing", 0.0),
     )
     optimizer_name = settings.get("optimizer", "adamw").lower()
     optimizer_class = {
@@ -146,14 +183,21 @@ def train(config, resume=None, stop_after_epoch=None):
     if optimizer_class is None:
         raise ValueError(f"Unsupported optimizer: {optimizer_name}")
     optimizer = optimizer_class(
-        model.parameters(),
+        parameter_groups(model, settings["learning_rate"], settings.get("backbone_lr_scale", 1.0)),
         lr=settings["learning_rate"],
         weight_decay=settings["weight_decay"],
         betas=tuple(settings.get("betas", (0.9, 0.999))),
     )
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(
-        optimizer, T_max=settings["epochs"], eta_min=settings["min_learning_rate"]
-    )
+    scheduler = make_scheduler(optimizer, settings)
+    ema = None
+    if settings.get("ema_decay"):
+        if resume:
+            raise ValueError("Resuming EMA runs is not supported")
+        ema = torch.optim.swa_utils.AveragedModel(
+            model,
+            multi_avg_fn=torch.optim.swa_utils.get_ema_multi_avg_fn(settings["ema_decay"]),
+            use_buffers=True,
+        )
     scaler = torch.amp.GradScaler(
         "cuda", enabled=settings["mixed_precision"] and device.type == "cuda"
     )
@@ -193,9 +237,12 @@ def train(config, resume=None, stop_after_epoch=None):
             scaler,
             settings["gradient_clip_norm"],
             desc=f"Epoch {epoch}/{settings['epochs']} [Train]",
+            ema=ema,
         )
+        # With EMA, validation and the saved checkpoints use the averaged weights.
+        evaluated = ema.module if ema is not None else model
         validation, predictions = run_epoch(
-            model,
+            evaluated,
             val_loader,
             device,
             criterion,
@@ -222,7 +269,7 @@ def train(config, resume=None, stop_after_epoch=None):
         history.append(row)
         snapshot = {
             "epoch": epoch,
-            "model_state_dict": model.state_dict(),
+            "model_state_dict": evaluated.state_dict(),
             "optimizer_state_dict": optimizer.state_dict(),
             "scheduler_state_dict": scheduler.state_dict(),
             "scaler_state_dict": scaler.state_dict(),

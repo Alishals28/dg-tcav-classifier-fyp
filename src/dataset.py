@@ -196,6 +196,12 @@ class MRIDataset(Dataset):
             import torchio as tio
 
             tensor = self.transform(tio.ScalarImage(tensor=tensor, affine=affine)).data
+        input_size = self.data_config.get("input_size")
+        if input_size and tuple(tensor.shape[1:]) != (input_size,) * 3:
+            # Downsample the whole 128^3 field of view for faster, lower-capacity screens.
+            tensor = torch.nn.functional.interpolate(
+                tensor[None].float(), size=(input_size,) * 3, mode="trilinear", align_corners=False
+            )[0]
         return {**record, "image": tensor.float(), "label": int(record["label"])}
 
 

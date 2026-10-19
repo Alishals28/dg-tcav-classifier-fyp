@@ -79,6 +79,7 @@ def run_epoch(
     scaler=None,
     clip_norm=0.0,
     desc=None,
+    ema=None,
 ):
     """Return epoch metrics and predictions with their subject IDs.
 
@@ -120,6 +121,8 @@ def run_epoch(
                 )
             scaler.step(optimizer)
             scaler.update()
+            if ema is not None:
+                ema.update_parameters(model)
         weight_sum = (
             float(criterion.weight[targets].sum().item())
             if criterion.weight is not None

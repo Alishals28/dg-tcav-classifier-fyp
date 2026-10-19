@@ -9,6 +9,17 @@ from torch import nn
 from torch.nn import functional as F
 
 
+def make_norm(norm: str, channels: int) -> nn.Module:
+    """BatchNorm by default; GroupNorm/InstanceNorm do not depend on the batch size."""
+    if norm == "batch":
+        return nn.BatchNorm3d(channels)
+    if norm == "group":
+        return nn.GroupNorm(min(32, channels // 4), channels)
+    if norm == "instance":
+        return nn.InstanceNorm3d(channels, affine=True)
+    raise ValueError(f"Unknown norm: {norm}")
+
+
 class ShortcutA(nn.Module):
     """Parameter-free subsampling and zero-padding; preserve the autograd graph."""
 
@@ -25,7 +36,7 @@ class ShortcutA(nn.Module):
 class BasicBlock(nn.Module):
     """Two 3D convolutions plus an identity or channel-matching residual path."""
 
-    def __init__(self, in_channels, channels, stride=1, dilation=1, shortcut="A"):
+    def __init__(self, in_channels, channels, stride=1, dilation=1, shortcut="A", norm="batch"):
         super().__init__()
         self.conv1 = nn.Conv3d(
             in_channels,
@@ -36,11 +47,11 @@ class BasicBlock(nn.Module):
             dilation=dilation,
             bias=False,
         )
-        self.bn1 = nn.BatchNorm3d(channels)
+        self.bn1 = make_norm(norm, channels)
         self.conv2 = nn.Conv3d(
             channels, channels, 3, padding=dilation, dilation=dilation, bias=False
         )
-        self.bn2 = nn.BatchNorm3d(channels)
+        self.bn2 = make_norm(norm, channels)
         self.relu = nn.ReLU(inplace=False)
         self.downsample = None
         if stride != 1 or in_channels != channels:
@@ -49,7 +60,7 @@ class BasicBlock(nn.Module):
                 if shortcut == "A"
                 else nn.Sequential(
                     nn.Conv3d(in_channels, channels, 1, stride=stride, bias=False),
-                    nn.BatchNorm3d(channels),
+                    make_norm(norm, channels),
                 )
             )
 
@@ -62,15 +73,15 @@ class BasicBlock(nn.Module):
 class ResNet18(nn.Module):
     """Four-class MedicalNet backbone. Reduced width is for synthetic smoke tests only."""
 
-    def __init__(self, num_classes=4, base_channels=64, shortcut="A"):
+    def __init__(self, num_classes=4, base_channels=64, shortcut="A", norm="batch", dropout=0.0):
         super().__init__()
         if shortcut not in {"A", "B"} or base_channels < 1 or num_classes != 4:
             raise ValueError("Invalid architecture settings")
-        self.base_channels, self.shortcut = base_channels, shortcut
+        self.base_channels, self.shortcut, self.norm = base_channels, shortcut, norm
         c = base_channels
         self.feature_dim = c * 8
         self.conv1 = nn.Conv3d(1, c, 7, stride=2, padding=3, bias=False)
-        self.bn1 = nn.BatchNorm3d(c)
+        self.bn1 = make_norm(norm, c)
         self.relu = nn.ReLU(inplace=False)
         self.maxpool = nn.MaxPool3d(3, stride=2, padding=1)
         self.layer1 = self._stage(c, c, 1, 1)
@@ -78,20 +89,21 @@ class ResNet18(nn.Module):
         self.layer3 = self._stage(c * 2, c * 4, 1, 2)
         self.layer4 = self._stage(c * 4, c * 8, 1, 4)
         self.avgpool = nn.AdaptiveAvgPool3d(1)
+        self.dropout = nn.Dropout(dropout)
         self.fc = nn.Linear(c * 8, num_classes)
         for module in self.modules():
             if isinstance(module, nn.Conv3d):
                 nn.init.kaiming_normal_(
                     module.weight, mode="fan_out", nonlinearity="relu"
                 )
-            elif isinstance(module, nn.BatchNorm3d):
+            elif isinstance(module, (nn.BatchNorm3d, nn.GroupNorm, nn.InstanceNorm3d)) and module.weight is not None:
                 nn.init.ones_(module.weight)
                 nn.init.zeros_(module.bias)
 
     def _stage(self, in_channels, channels, stride, dilation):
         return nn.Sequential(
-            BasicBlock(in_channels, channels, stride, dilation, self.shortcut),
-            BasicBlock(channels, channels, 1, dilation, self.shortcut),
+            BasicBlock(in_channels, channels, stride, dilation, self.shortcut, self.norm),
+            BasicBlock(channels, channels, 1, dilation, self.shortcut, self.norm),
         )
 
     def get_layer4_activations(self, x):
@@ -107,7 +119,7 @@ class ResNet18(nn.Module):
         return self.avgpool(activations).flatten(1)
 
     def forward_head(self, features):
-        return self.fc(features)
+        return self.fc(self.dropout(features))
 
     def forward_from_activations(self, activations):
         """Continue the classifier from spatial layer-4 activations without detaching."""
@@ -224,7 +236,11 @@ def build_model(config, input_shape=None):
     architecture = config.get("architecture", "ResNet18")
     if architecture == "ResNet18":
         return ResNet18(
-            config["num_classes"], config["base_channels"], config["shortcut"]
+            config["num_classes"],
+            config["base_channels"],
+            config["shortcut"],
+            config.get("norm", "batch"),
+            config.get("dropout", 0.0),
         )
     if architecture == "ClassifierCNN":
         return ClassifierCNN(

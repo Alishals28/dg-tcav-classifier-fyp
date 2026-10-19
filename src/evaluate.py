@@ -63,7 +63,11 @@ def load_fitted_model(checkpoint_path, config, device):
         "reference_sha256"
     ]:
         raise ValueError("Reference image changed since training")
-    model = build_model(trained["model"], trained["data"]["expected_shape"]).to(device)
+    if config["data"].get("input_size") != trained["data"].get("input_size"):
+        raise ValueError("Preprocessing configuration differs from checkpoint: input_size")
+    trained_size = trained["data"].get("input_size")
+    input_shape = [trained_size] * 3 if trained_size else trained["data"]["expected_shape"]
+    model = build_model(trained["model"], input_shape).to(device)
     model.load_state_dict(state["model_state_dict"], strict=True)
     model.eval()
     return model, state

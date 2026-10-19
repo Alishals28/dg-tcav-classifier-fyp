@@ -269,6 +269,8 @@ def launch(name: str, seeds: list[int], machine: str) -> None:
     write_json(build / "kernel-metadata.json", metadata)
     output = kaggle(["kernels", "push", "-p", str(build)])
     print(output.strip())
+    if "successfully pushed" not in output:
+        raise SystemExit(f"Kaggle refused the push for {name}; nothing launched")
     write_json(
         path / "launch.json",
         {
