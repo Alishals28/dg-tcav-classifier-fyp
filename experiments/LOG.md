@@ -30,6 +30,7 @@ With 112 validation subjects, single-run differences below about 0.03 macro-F1 a
 | 015 | none; 004 settings with seeds 4, 5, 6 | 0.400 ± 0.026 | 0.404 ± 0.038 | 0.221 (EMCI) | 3 | replication |
 | 016 | none; 008 settings with seeds 4, 5, 6 | 0.444 ± 0.021 | 0.457 ± 0.042 | 0.282 (EMCI) | 3 | replication |
 | 017 | 004 + ordinal soft labels with sigma 1.0 (instead of 0.6) | 0.398 ± 0.021 | 0.438 ± 0.011 | 0.236 (LMCI) | 3 | inconclusive |
+| 018 | 008 with epochs 50 -> 100 and patience 20 -> 30 | 0.447 ± 0.026 | 0.441 ± 0.028 | 0.313 (EMCI) | 3 | inconclusive |
 <!-- table:end -->
 
 Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patience 10, seed 42, two runs on
@@ -95,3 +96,20 @@ Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patien
 - Same run: seeds 1-2 spent 5.1 h before their first step, while seed 3 (started later) reached it in 80 s. 011 showed the
   same pattern (5.8 h wall for 1.1 h of training). So the first read of /kaggle/input is sometimes extremely slow. The
   kernel now copies the scans to local disk once before training and logs the time. This affects I/O only, not results.
+
+## Final summary (2026-10-20)
+
+Stopped on the compute budget (default 12 full experiments; 18 run including 2 replications and 1 rerun).
+Best configuration: experiments/008_ordinal_soft/config.yaml (ResNet-18 random init, batch 8, weighted CE, AdamW 1e-4
+cosine over 50 epochs, patience 20, GPU affine + intensity augmentation, ordinal soft labels sigma 0.6).
+Validation macro-F1 0.439 ± 0.022 over 6 seeds (seeds 1-6); bal-acc 0.447; AUC 0.690; per-class F1 CN 0.59, EMCI 0.30,
+LMCI 0.35, AD 0.52. Target (mean >= 0.50, every class >= 0.30): class floor met (EMCI exactly at 0.30), mean not met
+(-0.06). Progress: 0.30-0.33 (single runs, 14 Oct) -> 0.374 (001) -> 0.405 (004, 6 seeds) -> 0.439 (008, 6 seeds).
+
+Worked: batch 8 + patience 20 (001); GPU augmentation (004); ordinal soft labels (008, confirmed on 6 matched seeds).
+Did not work: MedicalNet pretraining (002 inconclusive, 010 reject); ClassifierCNN (003, collapses); EMA (005 bug,
+014 reject); GroupNorm (011, collapses); stronger augmentation (012, underfits); weight decay 0.05 (013); ordinal
+sigma 1.0 (017, over-smooths CN into EMCI); seed ensembling (no gain). Inconclusive and cheaper: 96^3 input (006, 009).
+Inconclusive and costlier: 100 epochs (007, 018).
+Caveat: every per-seed score is taken at that seed's best validation epoch, so absolute numbers are optimistic; expect
+lower test scores. Kaggle session time used: about 47 h (32.7 + 3.6 GPU-hours of training).

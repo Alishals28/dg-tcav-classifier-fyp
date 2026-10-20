@@ -1,0 +1,5 @@
+- Hypothesis: on the new baseline (008), the longer schedule (007's consistent +0.021 on 004) adds on top of ordinal labels.
+- Change: 008 with epochs 50 -> 100 and patience 20 -> 30
+- Result: val macro-F1 0.447 ± 0.026 (0.421/0.446/0.473), bal-acc 0.441, AUC 0.684; F1 CN 0.59, EMCI 0.31, LMCI 0.34, AD 0.54. Seeds 2-3 ran 100 epochs and memorised train (bal-acc 0.99-1.00); seed 1 stopped at 50. About 2x the GPU time of 008.
+- Verdict: inconclusive (vs 008: +0.012 < max std 0.026; vs 008's 6-seed mean 0.439: +0.008)
+- Next idea: not adopted; 008 stays the final model (same accuracy within noise at half the cost).
