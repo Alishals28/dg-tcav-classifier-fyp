@@ -1,0 +1,10 @@
+# Base: experiments/004_gpu_augment/config.yaml (accepted baseline).
+# Change: ordinal soft labels with sigma 1.0 (008 used 0.6). Dose check: true class gets 0.45-0.62 of the target
+# mass instead of 0.67-0.80. Compared against 004; read together with 008 to see the trend in sigma.
+extends: ../004_gpu_augment/config.yaml
+
+experiment:
+  name: exp017_ordinal_sigma1
+
+training:
+  ordinal_sigma: 1.0
