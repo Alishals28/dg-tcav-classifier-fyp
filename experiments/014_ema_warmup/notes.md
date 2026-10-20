@@ -1,0 +1,5 @@
+- Hypothesis: averaged weights (EMA 0.998, with warm-up this time) smooth the noisy validation curve and generalise better than 004's raw weights.
+- Change: 004 + EMA of weights, decay 0.998 with warm-up min(0.998, (1+n)/(10+n)); validation/checkpoints use EMA weights (fair retest of 005)
+- Result: val macro-F1 0.375 ± 0.034 (0.405/0.338/0.381), bal-acc 0.387; F1 CN 0.62, EMCI 0.18, LMCI 0.34, AD 0.36. Seed 2 peaked at epoch 4 and early-stopped at 24.
+- Verdict: reject (vs 004: -0.035, just beyond max std 0.034)
+- Next idea: EMA is dropped; weight averaging does not fix this task's validation noise.

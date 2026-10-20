@@ -26,6 +26,7 @@ With 112 validation subjects, single-run differences below about 0.03 macro-F1 a
 | 011 | 004 with GroupNorm (min(32, C/4) groups) instead of BatchNorm | 0.215 ± 0.109 | 0.286 ± 0.063 | 0.038 (EMCI) | 3 | reject |
 | 012 | 004 with stronger GPU augmentation (±15°, ±15% scale, ±8 vox, intensity 0.2, p 0.9) | 0.385 ± 0.031 | 0.398 ± 0.011 | 0.179 (EMCI) | 3 | inconclusive |
 | 013 | 004 with AdamW weight decay 1e-4 -> 0.05 | 0.419 ± 0.024 | 0.425 ± 0.018 | 0.241 (EMCI) | 3 | inconclusive |
+| 014 | 004 + EMA of weights, decay 0.998 with warm-up min(0.998, (1+n)/(10+n)); validation/checkpoints use EMA weights (fair retest of 005) | 0.375 ± 0.034 | 0.387 ± 0.018 | 0.177 (EMCI) | 3 | reject |
 | 015 | none; 004 settings with seeds 4, 5, 6 | 0.400 ± 0.026 | 0.404 ± 0.038 | 0.221 (EMCI) | 3 | replication |
 | 016 | none; 008 settings with seeds 4, 5, 6 | 0.444 ± 0.021 | 0.457 ± 0.042 | 0.282 (EMCI) | 3 | replication |
 | 017 | 004 + ordinal soft labels with sigma 1.0 (instead of 0.6) | 0.398 ± 0.021 | 0.438 ± 0.011 | 0.236 (LMCI) | 3 | inconclusive |
