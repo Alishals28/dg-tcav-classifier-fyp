@@ -1,0 +1,5 @@
+- Hypothesis: augmentation gave the largest gain so far, so roughly doubling its strength closes more of 004's train/val gap.
+- Change: 004 with stronger GPU augmentation (±15°, ±15% scale, ±8 vox, intensity 0.2, p 0.9)
+- Result: val macro-F1 0.385 ± 0.031 (0.406/0.350/0.400), bal-acc 0.398; F1 CN 0.65, EMCI 0.18, LMCI 0.29, AD 0.42. Train bal-acc only 0.51-0.57 (004: 0.76-0.86): now underfits.
+- Verdict: inconclusive (vs 004: -0.024, inside max std 0.031; leans negative)
+- Next idea: keep 004's augmentation strength; it sits near the sweet spot between memorising and underfitting.

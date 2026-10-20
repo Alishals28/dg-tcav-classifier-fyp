@@ -1,0 +1,14 @@
+{
+  "kernel": "mabdullahtahir1/dgtcav-exp-013-weight-decay",
+  "account": "abt",
+  "private": true,
+  "commit": "e6222a49a9be00753c86997d0c351fe4e306ea88",
+  "branch": "exp/autoresearch-20261019",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "machine": "NvidiaTeslaT4",
+  "launched_utc": "2026-10-20T01:22:21+00:00"
+}
