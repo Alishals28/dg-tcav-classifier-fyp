@@ -1,0 +1,14 @@
+{
+  "kernel": "khizerinam08/dgtcav-exp-014-ema-warmup",
+  "account": "khizer",
+  "private": true,
+  "commit": "c6ad74fbe6af81b6671c818f534ad9aa680dcd1b",
+  "branch": "exp/autoresearch-20261019",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "machine": "NvidiaTeslaT4",
+  "launched_utc": "2026-10-20T01:07:05+00:00"
+}

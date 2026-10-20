@@ -1,0 +1,5 @@
+- Hypothesis: none (replication). Seeds 4-6 of 004 for a matched 6-seed comparison with 008.
+- Change: none; 004 settings with seeds 4, 5, 6
+- Result: val macro-F1 0.400 ± 0.026 (0.371/0.412/0.418). With seeds 1-3: 004 over 6 seeds = 0.405 ± 0.023.
+- Verdict: replication (004 holds up: 0.410 on seeds 1-3, 0.400 on seeds 4-6)
+- Next idea: compare with 016 (008 seeds 4-6) once it finishes.
