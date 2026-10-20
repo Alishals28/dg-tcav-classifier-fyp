@@ -28,6 +28,7 @@ With 112 validation subjects, single-run differences below about 0.03 macro-F1 a
 | 013 | 004 with AdamW weight decay 1e-4 -> 0.05 | 0.419 ± 0.024 | 0.425 ± 0.018 | 0.241 (EMCI) | 3 | inconclusive |
 | 015 | none; 004 settings with seeds 4, 5, 6 | 0.400 ± 0.026 | 0.404 ± 0.038 | 0.221 (EMCI) | 3 | replication |
 | 016 | none; 008 settings with seeds 4, 5, 6 | 0.444 ± 0.021 | 0.457 ± 0.042 | 0.282 (EMCI) | 3 | replication |
+| 017 | 004 + ordinal soft labels with sigma 1.0 (instead of 0.6) | 0.398 ± 0.021 | 0.438 ± 0.011 | 0.236 (LMCI) | 3 | inconclusive |
 <!-- table:end -->
 
 Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patience 10, seed 42, two runs on

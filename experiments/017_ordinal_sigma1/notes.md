@@ -1,0 +1,5 @@
+- Hypothesis: if ordinal soft labels help (008, sigma 0.6), stronger smoothing (sigma 1.0) may help EMCI/LMCI further.
+- Change: 004 + ordinal soft labels with sigma 1.0 (instead of 0.6)
+- Result: val macro-F1 0.398 ± 0.021 (0.385/0.388/0.422), bal-acc 0.438, AUC 0.682; F1 CN 0.44, EMCI 0.35, LMCI 0.24, AD 0.57. CN is now pulled toward EMCI (CN F1 0.59 -> 0.44 vs 008); train bal-acc only about 0.64.
+- Verdict: inconclusive (vs 004: -0.011, inside max std 0.025; below 008 = sigma 0.6)
+- Next idea: keep sigma 0.6; the effect has an optimum, and 1.0 over-smooths.
