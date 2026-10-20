@@ -1,0 +1,5 @@
+- Hypothesis: stronger decoupled weight decay narrows 004's remaining train/val gap.
+- Change: 004 with AdamW weight decay 1e-4 -> 0.05
+- Result: val macro-F1 0.419 ± 0.024 (0.398/0.445/0.412), bal-acc 0.425, AUC 0.678; F1 CN 0.66, EMCI 0.24, LMCI 0.35, AD 0.42. Train bal-acc unchanged (0.75-0.88), so the decay barely regularised at lr 1e-4.
+- Verdict: inconclusive (vs 004: +0.009 < max std 0.025)
+- Next idea: not pursued; augmentation and label structure matter more than weight decay here.
