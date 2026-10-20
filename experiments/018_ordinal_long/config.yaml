@@ -1,0 +1,10 @@
+# Base: experiments/008_ordinal_soft/config.yaml (accepted baseline, confirmed on 6 seeds).
+# Change: 100-epoch cosine schedule with patience 30 (from 007, +0.021 vs 004 with the tightest seed spread).
+extends: ../008_ordinal_soft/config.yaml
+
+experiment:
+  name: exp018_ordinal_long
+
+training:
+  epochs: 100
+  early_stopping_patience: 30

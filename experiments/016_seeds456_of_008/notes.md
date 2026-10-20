@@ -1,0 +1,5 @@
+- Hypothesis: none (replication). Seeds 4-6 of 008 for the matched 6-seed comparison with 004 (+015).
+- Change: none; 008 settings with seeds 4, 5, 6
+- Result: val macro-F1 0.444 ± 0.021 (0.464/0.422/0.446). 6 seeds: 008 0.439 ± 0.022 vs 004 0.405 ± 0.023; paired gain +0.034, positive on all 6 seeds; bal-acc 0.409 -> 0.447, AUC 0.644 -> 0.690, EMCI F1 0.20 -> 0.30, AD 0.44 -> 0.52.
+- Verdict: replication (confirms 008; 008 accepted as the new baseline)
+- Next idea: 018 = 008 + 100-epoch schedule (007 was the most consistent near-miss).

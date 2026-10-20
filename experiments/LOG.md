@@ -20,11 +20,12 @@ With 112 validation subjects, single-run differences below about 0.03 macro-F1 a
 | 005 | 001 + EMA of weights (decay 0.998 from step 0; validation/checkpoints use EMA weights) | 0.146 ± 0.055 | 0.254 ± 0.006 | 0.000 (LMCI) | 3 | reject |
 | 006 | 001 with data.input_size 96 (trilinear downsample on CPU in the data loader) | 0.394 ± 0.014 | 0.391 ± 0.009 | 0.248 (LMCI) | 3 | accept |
 | 007 | 004 with epochs 50 -> 100 and patience 20 -> 30 | 0.430 ± 0.010 | 0.440 ± 0.012 | 0.296 (EMCI) | 3 | inconclusive |
-| 008 | 004 + ordinal Gaussian soft labels during training (sigma 0.6) | 0.434 ± 0.026 | 0.436 ± 0.032 | 0.308 (LMCI) | 3 | inconclusive |
+| 008 | 004 + ordinal Gaussian soft labels during training (sigma 0.6) | 0.434 ± 0.026 | 0.436 ± 0.032 | 0.308 (LMCI) | 3 | accept |
 | 009 | 004 + 96^3 input (data.input_size 96) | 0.418 ± 0.017 | 0.424 ± 0.014 | 0.294 (EMCI) | 3 | inconclusive |
 | 010 | 004 with MedicalNet resnet_18_23dataset.pth initialisation (only the init differs) | 0.333 ± 0.022 | 0.360 ± 0.026 | 0.120 (EMCI) | 3 | reject |
 | 012 | 004 with stronger GPU augmentation (±15°, ±15% scale, ±8 vox, intensity 0.2, p 0.9) | 0.385 ± 0.031 | 0.398 ± 0.011 | 0.179 (EMCI) | 3 | inconclusive |
 | 015 | none; 004 settings with seeds 4, 5, 6 | 0.400 ± 0.026 | 0.404 ± 0.038 | 0.221 (EMCI) | 3 | replication |
+| 016 | none; 008 settings with seeds 4, 5, 6 | 0.444 ± 0.021 | 0.457 ± 0.042 | 0.282 (EMCI) | 3 | replication |
 <!-- table:end -->
 
 Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patience 10, seed 42, two runs on
@@ -79,3 +80,7 @@ Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patien
   Reading: each seed's number comes from its best epoch, chosen on the same 112 validation subjects, so per-seed scores
   are optimistically biased; the fixed-rule ensemble has no such selection. All experiments share this bias, so
   comparisons stay fair, but expect lower absolute numbers on the locked test set. Seed ensembling (idea F) dropped.
+- 2026-10-20 02:00 UTC: 008 (ordinal soft labels) confirmed on 6 matched seeds (with 015/016) and accepted; new
+  baseline = 008, mean 0.439 ± 0.022 over seeds 1-6 (the table shows the seeds 1-3 entry). Budget: the default
+  of 12 full experiments is used up; only in-flight runs (011, 013, 014, 017) plus one final combination on the new
+  baseline (018) are run before stopping.
