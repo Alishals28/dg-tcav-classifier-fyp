@@ -23,6 +23,7 @@ With 112 validation subjects, single-run differences below about 0.03 macro-F1 a
 | 008 | 004 + ordinal Gaussian soft labels during training (sigma 0.6) | 0.434 ± 0.026 | 0.436 ± 0.032 | 0.308 (LMCI) | 3 | accept |
 | 009 | 004 + 96^3 input (data.input_size 96) | 0.418 ± 0.017 | 0.424 ± 0.014 | 0.294 (EMCI) | 3 | inconclusive |
 | 010 | 004 with MedicalNet resnet_18_23dataset.pth initialisation (only the init differs) | 0.333 ± 0.022 | 0.360 ± 0.026 | 0.120 (EMCI) | 3 | reject |
+| 011 | 004 with GroupNorm (min(32, C/4) groups) instead of BatchNorm | 0.215 ± 0.109 | 0.286 ± 0.063 | 0.038 (EMCI) | 3 | reject |
 | 012 | 004 with stronger GPU augmentation (±15°, ±15% scale, ±8 vox, intensity 0.2, p 0.9) | 0.385 ± 0.031 | 0.398 ± 0.011 | 0.179 (EMCI) | 3 | inconclusive |
 | 013 | 004 with AdamW weight decay 1e-4 -> 0.05 | 0.419 ± 0.024 | 0.425 ± 0.018 | 0.241 (EMCI) | 3 | inconclusive |
 | 015 | none; 004 settings with seeds 4, 5, 6 | 0.400 ± 0.026 | 0.404 ± 0.038 | 0.221 (EMCI) | 3 | replication |

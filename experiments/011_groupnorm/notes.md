@@ -1,0 +1,5 @@
+- Hypothesis: much of the epoch-to-epoch validation swing comes from BatchNorm running statistics at batch 8; GroupNorm has no train/eval mismatch.
+- Change: 004 with GroupNorm (min(32, C/4) groups) instead of BatchNorm
+- Result: val macro-F1 0.215 ± 0.109 (0.341/0.152/0.152). Seeds 2 and 3 collapsed to one class (dead-run stop at epoch 6); seed 1 learned slowly (train bal-acc max 0.44 vs 0.76-0.86 with BatchNorm).
+- Verdict: reject (vs 004: -0.194, worse beyond max std 0.109)
+- Next idea: keep BatchNorm; at batch 8 it is not the bottleneck.

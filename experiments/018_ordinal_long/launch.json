@@ -1,0 +1,14 @@
+{
+  "kernel": "mabdullahtahir1/dgtcav-exp-018-ordinal-long",
+  "account": "abt",
+  "private": true,
+  "commit": "038b9e691eb73cf361124b6c4cadfa0c249ab4e7",
+  "branch": "exp/autoresearch-20261019",
+  "seeds": [
+    1,
+    2,
+    3
+  ],
+  "machine": "NvidiaTeslaT4",
+  "launched_utc": "2026-10-20T03:54:46+00:00"
+}
