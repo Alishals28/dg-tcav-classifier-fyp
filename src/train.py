@@ -96,7 +96,13 @@ def ema_with_warmup(decay: float):
     def update(averaged: list[torch.Tensor], current: list[torch.Tensor], num_averaged: torch.Tensor) -> None:
         step = float(num_averaged)
         effective = min(decay, (1.0 + step) / (10.0 + step))
-        torch._foreach_lerp_(averaged, current, 1.0 - effective)
+        floating = [(a, c) for a, c in zip(averaged, current) if a.is_floating_point()]
+        if floating:
+            torch._foreach_lerp_([a for a, _ in floating], [c for _, c in floating], 1.0 - effective)
+        # Integer buffers (BatchNorm num_batches_tracked) are copied, not averaged.
+        for a, c in zip(averaged, current):
+            if not a.is_floating_point():
+                a.copy_(c)
 
     return update
 

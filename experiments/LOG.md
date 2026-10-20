@@ -87,3 +87,10 @@ Reference (not a 3-seed result): earlier ResNet-18, random init, batch 2, patien
   baseline = 008, mean 0.439 ± 0.022 over seeds 1-6 (the table shows the seeds 1-3 entry). Budget: the default
   of 12 full experiments is used up; only in-flight runs (011, 013, 014, 017) plus one final combination on the new
   baseline (018) are run before stopping.
+- 2026-10-20 06:30 UTC: 014 (EMA with warm-up) crashed on its first optimiser step in every seed: the warm-up EMA
+  averaged all buffers, including BatchNorm's integer num_batches_tracked ("lerp_cuda not implemented for Long").
+  My CPU check used a model without integer buffers and missed it. Fixed (integer buffers are copied) and checked on
+  a BatchNorm ResNet; 014 rerun with the same config and seeds. No result from the crashed run is used.
+- Same run: seeds 1-2 spent 5.1 h before their first step, while seed 3 (started later) reached it in 80 s. 011 showed the
+  same pattern (5.8 h wall for 1.1 h of training). So the first read of /kaggle/input is sometimes extremely slow. The
+  kernel now copies the scans to local disk once before training and logs the time. This affects I/O only, not results.

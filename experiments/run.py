@@ -187,6 +187,13 @@ if len(scans) != 768 or len(folders) != 1 or len(suffixes) != 1:
     sys.exit(f"Unexpected scan layout: {{len(scans)}} files, {{folders}}, {{suffixes}}")
 volume_dir = folders.pop()
 file_pattern = "{{subject_id}}_preprocessed_128" + suffixes.pop()
+# Some Kaggle machines read /kaggle/input very slowly on first access (exp 011/014 lost about 5 h);
+# copy the scans to local disk once.
+copy_started = time.time()
+local_dir = Path("/tmp/scans")
+subprocess.run(["cp", "-r", str(volume_dir), str(local_dir)], check=True)
+print(f"copied {{len(list(local_dir.iterdir()))}} scans to local disk in {{time.time() - copy_started:.0f}} s", flush=True)
+volume_dir = local_dir
 weights = sorted(Path("/kaggle/input").rglob("resnet_18_23dataset.pth"))
 
 experiment_dir = REPO_DIR / "experiments" / EXPERIMENT
