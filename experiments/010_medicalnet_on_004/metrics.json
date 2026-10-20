@@ -1,0 +1,255 @@
+{
+  "experiment": "010_medicalnet_on_004",
+  "kernel": "khizerinam08/dgtcav-exp-010-medicalnet-on-004",
+  "commit": "bde29c1d5f73722320374c9e906a2e58e34bab31",
+  "seeds_requested": [
+    1,
+    2,
+    3
+  ],
+  "seeds_finished": [
+    1,
+    2,
+    3
+  ],
+  "per_seed": {
+    "1": {
+      "macro_f1": 0.3548368298368298,
+      "balanced_accuracy": 0.38983395989974934,
+      "accuracy": 0.5,
+      "macro_roc_auc_ovr": 0.608529533757344,
+      "per_class_f1": {
+        "CN": 0.7,
+        "EMCI": 0.07692307692307693,
+        "LMCI": 0.4,
+        "AD": 0.24242424242424243
+      },
+      "per_class_recall": {
+        "CN": 0.8571428571428571,
+        "EMCI": 0.041666666666666664,
+        "LMCI": 0.45,
+        "AD": 0.21052631578947367
+      },
+      "confusion_matrix": [
+        [
+          42,
+          0,
+          4,
+          3
+        ],
+        [
+          12,
+          1,
+          5,
+          6
+        ],
+        [
+          9,
+          1,
+          9,
+          1
+        ],
+        [
+          8,
+          0,
+          7,
+          4
+        ]
+      ],
+      "best_epoch": 4,
+      "epochs_run": 24,
+      "seconds_total": 1260.2585361560004,
+      "seconds_per_epoch": 52.51077233983335,
+      "dead_run": null,
+      "splits_sha256": "2dcf59474671623e97f9a27e03534e590a003a3285d23f486a4c5006fc9be1a0",
+      "manifest_sha256": "44d9c943a40ee75198b7fbdc777215b5242876dabb029b207ec496f39012376c",
+      "git_commit": "bde29c1d5f73722320374c9e906a2e58e34bab31"
+    },
+    "2": {
+      "macro_f1": 0.33240978538008237,
+      "balanced_accuracy": 0.3437410490511994,
+      "accuracy": 0.4017857142857143,
+      "macro_roc_auc_ovr": 0.5823687345522726,
+      "per_class_f1": {
+        "CN": 0.594059405940594,
+        "EMCI": 0.047619047619047616,
+        "LMCI": 0.32432432432432434,
+        "AD": 0.36363636363636365
+      },
+      "per_class_recall": {
+        "CN": 0.6122448979591837,
+        "EMCI": 0.041666666666666664,
+        "LMCI": 0.3,
+        "AD": 0.42105263157894735
+      },
+      "confusion_matrix": [
+        [
+          30,
+          13,
+          2,
+          4
+        ],
+        [
+          10,
+          1,
+          5,
+          8
+        ],
+        [
+          8,
+          1,
+          6,
+          5
+        ],
+        [
+          4,
+          3,
+          4,
+          8
+        ]
+      ],
+      "best_epoch": 13,
+      "epochs_run": 33,
+      "seconds_total": 1680.6440876310007,
+      "seconds_per_epoch": 50.928608716090935,
+      "dead_run": null,
+      "splits_sha256": "2dcf59474671623e97f9a27e03534e590a003a3285d23f486a4c5006fc9be1a0",
+      "manifest_sha256": "44d9c943a40ee75198b7fbdc777215b5242876dabb029b207ec496f39012376c",
+      "git_commit": "bde29c1d5f73722320374c9e906a2e58e34bab31"
+    },
+    "3": {
+      "macro_f1": 0.31131779181135666,
+      "balanced_accuracy": 0.34728786251342647,
+      "accuracy": 0.38392857142857145,
+      "macro_roc_auc_ovr": 0.5793888603498356,
+      "per_class_f1": {
+        "CN": 0.5681818181818182,
+        "EMCI": 0.23529411764705882,
+        "LMCI": 0.08695652173913043,
+        "AD": 0.3548387096774194
+      },
+      "per_class_recall": {
+        "CN": 0.5102040816326531,
+        "EMCI": 0.25,
+        "LMCI": 0.05,
+        "AD": 0.5789473684210527
+      },
+      "confusion_matrix": [
+        [
+          25,
+          16,
+          0,
+          8
+        ],
+        [
+          7,
+          6,
+          0,
+          11
+        ],
+        [
+          6,
+          0,
+          1,
+          13
+        ],
+        [
+          1,
+          5,
+          2,
+          11
+        ]
+      ],
+      "best_epoch": 3,
+      "epochs_run": 23,
+      "seconds_total": 1191.576930008002,
+      "seconds_per_epoch": 51.80769260904356,
+      "dead_run": null,
+      "splits_sha256": "2dcf59474671623e97f9a27e03534e590a003a3285d23f486a4c5006fc9be1a0",
+      "manifest_sha256": "44d9c943a40ee75198b7fbdc777215b5242876dabb029b207ec496f39012376c",
+      "git_commit": "bde29c1d5f73722320374c9e906a2e58e34bab31"
+    }
+  },
+  "aggregate": {
+    "macro_f1": {
+      "mean": 0.3328548023427563,
+      "std": 0.021762931735831107,
+      "n": 3
+    },
+    "balanced_accuracy": {
+      "mean": 0.36028762382145835,
+      "std": 0.025649258335718912,
+      "n": 3
+    },
+    "accuracy": {
+      "mean": 0.4285714285714286,
+      "std": 0.062499999999999986,
+      "n": 3
+    },
+    "macro_roc_auc_ovr": {
+      "mean": 0.5900957095531507,
+      "std": 0.01603353730961803,
+      "n": 3
+    },
+    "per_class_f1": {
+      "CN": {
+        "mean": 0.6207470747074707,
+        "std": 0.06984398336736457,
+        "n": 3
+      },
+      "EMCI": {
+        "mean": 0.11994541406306113,
+        "std": 0.10096372664102972,
+        "n": 3
+      },
+      "LMCI": {
+        "mean": 0.2704269486878183,
+        "std": 0.1633332487456025,
+        "n": 3
+      },
+      "AD": {
+        "mean": 0.32029977191267517,
+        "std": 0.06758548844702646,
+        "n": 3
+      }
+    },
+    "worst_class_f1": 0.11994541406306113,
+    "confusion_matrix_sum": [
+      [
+        97,
+        29,
+        6,
+        15
+      ],
+      [
+        29,
+        8,
+        10,
+        25
+      ],
+      [
+        23,
+        2,
+        16,
+        19
+      ],
+      [
+        13,
+        8,
+        13,
+        23
+      ]
+    ]
+  },
+  "runtime_hours": 1.1479109871652786,
+  "baseline": "004_gpu_augment",
+  "comparison": {
+    "baseline": "004_gpu_augment",
+    "baseline_mean": 0.40953705207117247,
+    "baseline_std": 0.02494009868780911,
+    "gain": -0.0766822497284162,
+    "threshold_max_std": 0.02494009868780911,
+    "beats_noise": false,
+    "worse_beyond_noise": true
+  }
+}

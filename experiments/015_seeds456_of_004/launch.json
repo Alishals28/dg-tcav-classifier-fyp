@@ -1,0 +1,14 @@
+{
+  "kernel": "khizerinam08/dgtcav-exp-015-seeds456-of-004",
+  "account": "khizer",
+  "private": true,
+  "commit": "36286bf58becc5c9cd3866a307515bba3c134f49",
+  "branch": "exp/autoresearch-20261019",
+  "seeds": [
+    4,
+    5,
+    6
+  ],
+  "machine": "NvidiaTeslaT4",
+  "launched_utc": "2026-10-19T23:20:31+00:00"
+}

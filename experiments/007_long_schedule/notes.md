@@ -1,0 +1,5 @@
+- Hypothesis: 004 was still improving at epoch 50 (best epochs 37-47), so a longer cosine schedule helps.
+- Change: 004 with epochs 50 -> 100 and patience 20 -> 30
+- Result: val macro-F1 0.430 ± 0.010 (0.440/0.431/0.419), bal-acc 0.440, AUC 0.668; F1 CN 0.62, EMCI 0.30, LMCI 0.30, AD 0.51. Best epochs 59-88; train bal-acc reaches 0.99 again (memorises). Gain vs 004 +0.021 < max std 0.025. Twice the GPU time.
+- Verdict: inconclusive (vs 004; consistent but inside the noise margin)
+- Next idea: keep 50 epochs as the budget; revisit length only combined with stronger regularisation.

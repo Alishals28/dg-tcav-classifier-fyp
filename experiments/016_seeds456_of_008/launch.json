@@ -1,0 +1,14 @@
+{
+  "kernel": "mabdullahtahir1/dgtcav-exp-016-seeds456-of-008",
+  "account": "abt",
+  "private": true,
+  "commit": "36286bf58becc5c9cd3866a307515bba3c134f49",
+  "branch": "exp/autoresearch-20261019",
+  "seeds": [
+    4,
+    5,
+    6
+  ],
+  "machine": "NvidiaTeslaT4",
+  "launched_utc": "2026-10-20T00:02:42+00:00"
+}

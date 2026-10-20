@@ -1,0 +1,5 @@
+- Hypothesis: with 004's settings fixed, MedicalNet-pretrained weights give better 3D features than random init.
+- Change: 004 with MedicalNet resnet_18_23dataset.pth initialisation (only the init differs)
+- Result: val macro-F1 0.333 ± 0.022 (0.355/0.332/0.311), bal-acc 0.360; F1 CN 0.62, EMCI 0.12, LMCI 0.27, AD 0.32. Train bal-acc stalls at 0.45-0.51; best val epochs 3-13.
+- Verdict: reject (vs 004: -0.077, worse beyond max std 0.025)
+- Next idea: pretraining is dropped; MedicalNet's segmentation-trained features do not transfer to this z-scored, whole-head classification setup.
