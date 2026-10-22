@@ -9,7 +9,9 @@ import pandas as pd
 from src.constants import REQUIRED_MANIFEST_COLUMNS, SPLIT_NAMES
 
 
-def prepare(baseline_manifest, splits_path, preprocessing_manifest, output_dir):
+def prepare(
+    baseline_manifest, splits_path, preprocessing_manifest, output_dir, overwrite=False
+):
     baseline = pd.read_csv(baseline_manifest, dtype=str, keep_default_na=False)
     preprocessing = pd.read_csv(
         preprocessing_manifest, dtype=str, keep_default_na=False
@@ -76,7 +78,7 @@ def prepare(baseline_manifest, splits_path, preprocessing_manifest, output_dir):
         raise ValueError(f"No successful scans remain in one or more splits: {counts}")
 
     output = Path(output_dir)
-    output.mkdir(parents=True, exist_ok=False)
+    output.mkdir(parents=True, exist_ok=overwrite)
     eligible.to_csv(output / "classifier_manifest.csv", index=False)
     (output / "classifier_splits.json").write_text(
         json.dumps(filtered_splits, indent=2) + "\n", encoding="utf-8"
@@ -113,12 +115,18 @@ def main():
     parser.add_argument("--splits", required=True)
     parser.add_argument("--preprocessing-manifest", required=True)
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Overwrite output files if the directory already exists",
+    )
     args = parser.parse_args()
     summary = prepare(
         args.baseline_manifest,
         args.splits,
         args.preprocessing_manifest,
         args.output_dir,
+        overwrite=args.overwrite,
     )
     print(json.dumps(summary, indent=2))
 

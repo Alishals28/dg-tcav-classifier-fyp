@@ -27,13 +27,7 @@ def load_fitted_model(checkpoint_path, config, device):
         "architecture", "ResNet18"
     ):
         raise ValueError("Model configuration differs from checkpoint: architecture")
-    model_keys = ["num_classes"]
-    if config["model"].get("architecture", "ResNet18") == "ClassifierCNN":
-        model_keys.extend(
-            ("norm_type", "in_channels", "expansion", "feature_dim", "nhid")
-        )
-    else:
-        model_keys.extend(("base_channels", "shortcut"))
+    model_keys = ["num_classes", "base_channels", "shortcut"]
     for key in model_keys:
         if config["model"].get(key) != trained["model"].get(key):
             raise ValueError(f"Model configuration differs from checkpoint: {key}")

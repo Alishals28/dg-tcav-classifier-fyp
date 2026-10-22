@@ -116,8 +116,8 @@ def _validate_config(config: dict[str, Any]) -> None:
     if config["model"].get("num_classes") != 4:
         raise ValueError("This project is defined as a four-class classifier")
     architecture = config["model"].get("architecture", "ResNet18")
-    if architecture not in {"ResNet18", "ClassifierCNN"}:
-        raise ValueError(f"Unsupported model architecture: {architecture}")
+    if architecture != "ResNet18":
+        raise ValueError(f"Unsupported model architecture: {architecture}. Supported: ResNet18")
     if config["training"].get("optimizer", "adamw").lower() not in {"adam", "adamw"}:
         raise ValueError("training.optimizer must be adam or adamw")
     if "balanced_sampler" in config["training"] and type(
@@ -149,12 +149,8 @@ def _validate_config(config: dict[str, Any]) -> None:
         raise ValueError("reference_grid_mode must be exact or same_fov")
     if config["data"].get("reference_fov_tolerance_mm", 0.1) < 0:
         raise ValueError("reference_fov_tolerance_mm must be nonnegative")
-    if architecture == "ResNet18" and config["model"]["shortcut"] not in {"A", "B"}:
+    if config["model"]["shortcut"] not in {"A", "B"}:
         raise ValueError("shortcut must be A or B")
-    if architecture == "ClassifierCNN" and config["model"].get(
-        "norm_type", "instance"
-    ) not in {"instance", "batch"}:
-        raise ValueError("ClassifierCNN norm_type must be instance or batch")
     if config["model"]["pretrained"] and not config["model"]["pretrained_checkpoint"]:
         raise ValueError("Pretrained training requires a checkpoint path")
     checkpoint_sha256 = config["model"].get("pretrained_checkpoint_sha256")
@@ -162,8 +158,6 @@ def _validate_config(config: dict[str, Any]) -> None:
         r"[0-9a-fA-F]{64}", checkpoint_sha256
     ):
         raise ValueError("pretrained_checkpoint_sha256 must be a 64-character hex digest")
-    if architecture == "ClassifierCNN" and config["model"]["pretrained"]:
-        raise ValueError("MedicalNet weights are supported only by ResNet18")
 
 
 def require_preprocessing(config: dict[str, Any]) -> None:

@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from src.medicalnet import load_medicalnet
-from src.model import ClassifierCNN, ResNet18, ShortcutA
+from src.model import ResNet18, ShortcutA
 
 
 def test_outputs_features_and_gradients():
@@ -68,24 +68,3 @@ def test_medicalnet_rejects_checkpoint_checksum_mismatch(tmp_path):
 def test_pretrained_requires_correct_architecture():
     with pytest.raises(ValueError, match="shortcut A"):
         load_medicalnet(ResNet18(base_channels=8), "unused")
-
-
-def test_classifier_cnn_128_tcav_interface_and_gradients():
-    model = ClassifierCNN()
-    assert model.flat_dim == 512 * 3 * 3 * 3
-    assert model.conv[1].affine
-
-    meta_model = model.to("meta")
-    volume = torch.zeros(1, 1, 128, 128, 128, device="meta")
-    activation = meta_model.get_layer4_activations(volume)
-    assert activation.shape == (1, 512, 3, 3, 3)
-    assert meta_model.forward_features(volume).shape == (1, 1024)
-    assert meta_model.forward_head(torch.zeros(1, 1024, device="meta")).shape == (1, 4)
-
-    model = ClassifierCNN()
-    activation = torch.randn(1, 512, 3, 3, 3, requires_grad=True)
-    logits = model.forward_from_activations(activation)
-    gradient = torch.autograd.grad(logits[:, 0].sum(), activation)[0]
-    assert logits.shape == (1, 4)
-    assert gradient.shape == activation.shape
-    assert torch.isfinite(gradient).all()

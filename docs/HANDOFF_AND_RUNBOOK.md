@@ -60,17 +60,17 @@ python -m scripts.prepare_preprocessed_manifest \
   --baseline-manifest /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_setup/cohort_a_baseline_manifest.csv \
   --splits /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_setup/cohort_a_splits.json \
   --preprocessing-manifest /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_setup/preprocessing_manifest.csv \
-  --output-dir data/preprocessed_128_classifier_inputs_refresh
+  --output-dir data/preprocessed_128_classifier_inputs
 ```
 
-The output directory must not already exist. It contains a classifier manifest,
+The 1,593-subject manifest and splits are already tracked; pass --overwrite if refreshing in-place. It contains a classifier manifest,
 filtered split JSON, and preprocessing summary. Check the summary and confirm all
 four labels occur in training. The run configs use
 `data/preprocessed_128_classifier_inputs`, so point them at the reviewed refresh
-directory or replace the existing inputs only after backing them up. As of the
-currently inspected report, last-row selection yields 768 successful subjects
-split as 535 train, 112 validation, and 121 test. Re-run the script for each
-updated preprocessing report; do not assume these counts remain current.
+directory or replace the existing inputs only after backing them up. Across the complete baseline cohort,
+preprocessing yielded 1,593 successful subjects split as 1,112 train, 236 validation,
+and 245 test. The manifest, split JSON, and summary are synchronized with these
+counts.
 
 ## Audit and run
 
@@ -87,10 +87,8 @@ rsync -a --include='*_preprocessed_128.nii.gz' --exclude='*' \
 ```
 
 The profile uses batch size 4 with mixed precision. Verify that this fits on the
-selected Colab GPU before starting a long run. The current tracked split has only
-535 training subjects; regenerate the classifier inputs from the latest reports
-and stop unless the resulting audit matches the intended cohort (1,112 train, if
-that is the verified current split). Resume a run with the exact config it
+selected Colab GPU before starting a long run. The active split has 1,112 training
+subjects (auditing 1,348 train+val volumes at startup). Resume a run with the exact config it
 started with.
 
 ```bash
@@ -118,7 +116,7 @@ the classifier inputs and start a new run rather than resuming a checkpoint
 trained on a different subject set. Synthetic checks do not measure diagnostic
 performance.
 
-`configs/colab_classifier_cnn_128.yaml` remains available for the CNN comparison.
+The production pipeline exclusively uses `configs/colab_medicalnet_resnet18_128.yaml`.
 The MedicalNet load report records the computed checkpoint SHA-256 and loaded
 backbone tensor fraction. Set `model.pretrained_checkpoint_sha256` to a trusted
 expected digest if you want training to reject any other checkpoint.

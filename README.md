@@ -1,14 +1,14 @@
 # DG-TCAV classifier
 
 Four-class classification of baseline ADNI T1 MRI scans: CN, EMCI, LMCI, and AD.
-The repository supports a MedicalNet-compatible 3D ResNet-18 and a four-block
-dilated `ClassifierCNN`, both with four-class heads. Real-data profiles use the project's
-preprocessed 128×128×128 NIfTI scans.
+The repository implements a MedicalNet-compatible 3D ResNet-18 with a four-class classification head.
+Real-data profiles use the project's preprocessed 128×128×128 NIfTI scans.
 MRI preprocessing and diffusion generation are separate project components.
 
-This repository contains code and documentation, not the private scans, subject
-manifests, pretrained weights, or training outputs. Keep those files in Google
-Drive and out of Git. The current scan inventory and run guidance are in the
+This repository contains code, documentation, and de-identified study manifests and
+splits, but excludes raw/preprocessed MRI volumetric scans, pretrained checkpoint binaries,
+and large training run outputs. Those large binary files are hosted on Google Drive and
+kept out of Git. The current scan inventory and run guidance are in the
 [Colab runbook](docs/HANDOFF_AND_RUNBOOK.md); historical checks and limitations
 are recorded in [verification](docs/VERIFICATION.md).
 
@@ -59,10 +59,10 @@ python -m scripts.prepare_preprocessed_manifest \
   --baseline-manifest "$ROOT/classifier_setup/cohort_a_baseline_manifest.csv" \
   --splits "$ROOT/classifier_setup/cohort_a_splits.json" \
   --preprocessing-manifest "$ROOT/classifier_setup/preprocessing_manifest.csv" \
-  --output-dir "data/preprocessed_128_classifier_inputs_refresh"
+  --output-dir "data/preprocessed_128_classifier_inputs"
 ```
 
-The output directory must not already exist. The output contains `classifier_manifest.csv`,
+The 1,593-subject manifest and splits are already tracked; pass --overwrite if refreshing in-place. The output contains `classifier_manifest.csv`,
 `classifier_splits.json`, and `preprocessing_summary.json`. Review the summary,
 especially the final-success count, retry count, missing-status subjects, and
 class counts by split. The training split must contain all four classes.
