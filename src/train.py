@@ -14,7 +14,7 @@ import yaml
 
 warnings.filterwarnings(
     "ignore",
-    message=".*max_pool3d_with_indices_backward_cuda.*",
+    message=".*(max_pool3d_with_indices_backward_cuda|avg_pool3d_backward_cuda).*",
     category=UserWarning,
 )
 

@@ -1,10 +1,17 @@
 """Check whether the model can memorize a small, balanced subset of training scans."""
 
 import argparse
+import warnings
 from copy import deepcopy
 from pathlib import Path
 
 import torch
+
+warnings.filterwarnings(
+    "ignore",
+    message=".*(max_pool3d_with_indices_backward_cuda|avg_pool3d_backward_cuda).*",
+    category=UserWarning,
+)
 
 from src.config import load_config, require_preprocessing
 from src.dataset import build_index
@@ -59,19 +66,26 @@ def main():
     criterion = torch.nn.CrossEntropyLoss()
     loader = make_loader(subset, "train", cfg)
     results = []
+    clip_norm = cfg["training"].get("gradient_clip_norm", 1.0)
     for epoch in range(args.steps):
-        # Evaluate the same training examples in eval mode to also exercise BatchNorm inference.
-        run_epoch(model, loader, device, criterion, optimizer, scaler)
-        metrics, _ = run_epoch(model, loader, device, criterion)
+        training, _ = run_epoch(
+            model,
+            loader,
+            device,
+            criterion,
+            optimizer,
+            scaler,
+            clip_norm=clip_norm,
+        )
         results.append(
             {
                 "epoch": epoch + 1,
-                "accuracy": metrics["accuracy"],
-                "loss": metrics["loss"],
+                "accuracy": training["accuracy"],
+                "loss": training["loss"],
             }
         )
         print(results[-1], flush=True)
-        if metrics["accuracy"] >= 0.95:
+        if training["accuracy"] >= 0.95:
             break
     write_json(
         out / "result.json",
