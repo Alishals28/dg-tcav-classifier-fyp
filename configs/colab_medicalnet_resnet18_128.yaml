@@ -5,8 +5,8 @@ experiment:
   output_dir: /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs
 
 data:
-  manifest_path: data/preprocessed_128_classifier_inputs_refresh/classifier_manifest.csv
-  splits_path: data/preprocessed_128_classifier_inputs_refresh/classifier_splits.json
+  manifest_path: data/preprocessed_128_classifier_inputs/classifier_manifest.csv
+  splits_path: data/preprocessed_128_classifier_inputs/classifier_splits.json
   volume_dir: /content/preprocessed_128
   reference_image: template/mni152.nii.gz
 
