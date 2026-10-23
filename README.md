@@ -11,6 +11,12 @@ and large training run outputs. Those large binary files are hosted on Google Dr
 kept out of Git. The current scan inventory and run guidance are in the
 [Colab runbook](docs/HANDOFF_AND_RUNBOOK.md); historical checks and limitations
 are recorded in [verification](docs/VERIFICATION.md).
+For a staged, evidence-first plan to improve and evaluate the four-class model,
+see the [model-improvement roadmap](docs/MODEL_IMPROVEMENT_ROADMAP.md).
+The current Phase 0–1 execution evidence and open checks are in the
+[Phase 0–1 checklist](docs/PHASE_0_1_CHECKLIST.md).
+For separate actionable checklists for every roadmap phase, see the
+[phase checklist index](docs/PHASE_CHECKLISTS.md).
 
 ## Install
 

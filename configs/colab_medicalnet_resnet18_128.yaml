@@ -18,7 +18,7 @@ model:
   pretrained: true
   pretrained_checkpoint: /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/resnet_18_23dataset.pth
   # Set to a trusted digest to reject any different checkpoint; the run logs the actual digest.
-  pretrained_checkpoint_sha256: null
+  pretrained_checkpoint_sha256: 61224f9317fcce873366deb3703183e92cc47325b726b69691b33536244e10f4
 
 augmentation:
   enabled: false

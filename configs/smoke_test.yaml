@@ -15,6 +15,9 @@ data:
   spacing_tolerance: 0.05
   orientation: RAS
   normalization: minmax
+  preprocessing_confirmed: false
+  reference_image: null
+  reference_grid_mode: exact
   expected_split_sizes: {train: 8, val: 4, test: 4}
 
 model:

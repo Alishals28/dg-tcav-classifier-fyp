@@ -1,0 +1,9 @@
+extends: colab_medicalnet_resnet18_128.yaml
+
+experiment:
+  name: medicalnet_resnet18_exp_e_lower_lr_5e5
+  output_dir: /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs
+
+training:
+  learning_rate: 0.00005
+  min_learning_rate: 0.0000005

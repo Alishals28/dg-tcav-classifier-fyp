@@ -1,0 +1,9 @@
+extends: colab_medicalnet_resnet18_128.yaml
+
+experiment:
+  name: medicalnet_resnet18_exp_c_weighted_loss
+  output_dir: /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs
+
+training:
+  balanced_sampler: false
+  weighted_loss: true

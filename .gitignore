@@ -1,46 +1,111 @@
-# Python build and cache files
+# Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
-*.egg-info/
+*$py.class
+*.so
+
+# Distribution / packaging
 build/
 dist/
+downloads/
+eggs/
+.eggs/
+*.egg-info/
+*.egg
+
+# Testing and coverage
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.tox/
+.nox/
 .coverage
+.coverage.*
 htmlcov/
+nosetests.xml
+coverage.xml
 
-# Virtual environments and local secrets
+# Virtual environments, package managers, and local secrets
 .venv/
 venv/
+ENV/
+env/
 .env
 .env.*
 !.env.example
+uv.lock
+.uv/
 
-# IDE and operating-system files
+# IDE, editor, and operating-system files
 .idea/
 .vscode/
+*.swp
+*.swo
+*.tmp
+*~
+*.bak
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+desktop.ini
+[Dd]esktop.ini
 
-# Notebook runtime state
+# Jupyter Notebook runtime state
 .ipynb_checkpoints/
+*-checkpoint.ipynb
 
-# Keep private MRI scans, raw manifests, model weights, and run outputs out of Git.
-/data/**
-!/data/preprocessed_128_classifier_inputs/
-!/data/preprocessed_128_classifier_inputs/**
-outputs/
+# Neuroimaging data and volumes (keep raw scans and derivatives out of Git)
 *.nii
 *.nii.gz
 !/template/mni152.nii.gz
+*.dcm
+*.mha
+*.mhd
+*.mgz
+*.hdr
+*.img
+
+# Large arrays, exported activations, and feature dumps
+*.npy
+*.npz
+
+# Model weights, checkpoints, and serialized graphs
 *.pt
 *.pth
 *.ckpt
+*.h5
+*.hdf5
+*.bin
+*.safetensors
+*.onnx
+
+# Compressed archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+
+# Run outputs, experiment logs, and tracking
+outputs/
+reports/
+logs/
+lightning_logs/
+wandb/
+.wandb/
 *.log
 
-# Temporary editor and patch files
-*.swp
-*.tmp
-*~
+# Scratch, temporary, and reference source archives
+scratch/
+tmp/
 reference/
+
+# Data directory policy: ignore raw cohorts, allow only small manifest/splits metadata
+/data/**
+!/data/preprocessed_128_classifier_inputs/
+!/data/preprocessed_128_classifier_inputs/**

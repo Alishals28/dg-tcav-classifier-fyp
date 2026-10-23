@@ -1,0 +1,16 @@
+extends: colab_medicalnet_resnet18_128.yaml
+
+experiment:
+  name: medicalnet_resnet18_exp_d_mild_augmentation
+  output_dir: /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs
+
+augmentation:
+  enabled: true
+  degrees: 5
+  translation_mm: 2
+  scales: 0.03
+  noise_std: 0.01
+
+training:
+  balanced_sampler: true
+  weighted_loss: false
