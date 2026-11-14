@@ -1,7 +1,0 @@
-extends: preprocessed_128.yaml
-experiment:
-  name: random_resnet18_weighted_ce
-model:
-  pretrained: false
-  pretrained_checkpoint: null
-# Keep loss and augmentation fixed so this comparison measures initialization.

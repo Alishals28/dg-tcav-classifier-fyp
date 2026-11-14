@@ -1,0 +1,12 @@
+extends: colab_exp_c_weighted_loss.yaml
+
+experiment:
+  name: medicalnet_resnet18_exp_c_cv_fold3
+  seed: 42
+
+data:
+  splits_path: data/preprocessed_128_classifier_inputs/phase6_splits/cv_fold3_splits.json
+  expected_split_sizes:
+    train: 1078
+    val: 270
+    test: 245

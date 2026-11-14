@@ -105,6 +105,13 @@ scratch/
 tmp/
 reference/
 
+# Architectural diagram dumps (auto-generated prose, not code)
+architectural_diagrams/
+
+# Internal phase checklists and meeting reports (not user-facing docs)
+docs/PHASE_*.md
+docs/SUPERVISOR_MEETING_REPORT.md
+
 # Data directory policy: ignore raw cohorts, allow only small manifest/splits metadata
 /data/**
 !/data/preprocessed_128_classifier_inputs/

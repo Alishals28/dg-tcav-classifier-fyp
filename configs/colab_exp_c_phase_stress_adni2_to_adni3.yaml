@@ -1,0 +1,12 @@
+extends: colab_exp_c_weighted_loss.yaml
+
+experiment:
+  name: medicalnet_resnet18_exp_c_stress_adni2_to_adni3
+  seed: 42
+
+data:
+  splits_path: data/preprocessed_128_classifier_inputs/phase6_splits/phase_stress_train_adni2_val_adni3_splits.json
+  expected_split_sizes:
+    train: 704
+    val: 644
+    test: 245
