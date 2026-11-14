@@ -157,6 +157,17 @@ def load_volume(path, data_config):
     array = image.get_fdata(dtype=np.float32)
     if not np.isfinite(array).all():
         raise ValueError(f"NaN or Inf voxel in {path}")
+    if data_config.get("apply_companion_mask", False):
+        p_str = str(path)
+        mask_path = None
+        if p_str.endswith(".nii.gz"):
+            candidate = Path(p_str[:-7] + "_mask.nii.gz")
+            if candidate.is_file():
+                mask_path = candidate
+        if mask_path is not None:
+            mask_arr = nib.load(str(mask_path)).get_fdata(dtype=np.float32)
+            if mask_arr.shape == array.shape:
+                array = array * (mask_arr > 0).astype(np.float32)
     foreground = array != 0
     values = array[foreground]
     if values.size < 2 or float(np.ptp(values)) < 1e-8:

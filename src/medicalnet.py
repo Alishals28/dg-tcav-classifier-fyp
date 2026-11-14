@@ -1,4 +1,4 @@
-"""Load MedicalNet backbone weights and report checkpoint compatibility."""
+"""Load MedicalNet backbone weights for ResNet18 and HybridInceptionResNet3D."""
 
 import json
 import re
@@ -7,13 +7,15 @@ from pathlib import Path
 import torch
 
 from .dataset import sha256_file
+from .model import HybridInceptionResNet3D
 
 
 def load_medicalnet(model, path, report_path=None, expected_sha256=None):
-    """Load the backbone, allowing legacy BatchNorm batch counters to be absent.
+    """Load MedicalNet weights into ResNet18 (full backbone) or HybridInceptionResNet3D (stem + layers 1-3).
 
-    Ignore the original head; reject missing or incompatible backbone tensors.
-    The supplied checkpoint should come from a trusted source.
+    Ignores the segmentation head (`conv_seg`) and any intentional hybrid/attention modules
+    (`spatial_pool`, `layer4` in HybridInceptionResNet3D), while rejecting unexpected or
+    corrupted ResNet backbone tensors.
     """
     if model.base_channels != 64 or model.shortcut != "A":
         raise ValueError(
@@ -36,8 +38,14 @@ def load_medicalnet(model, path, report_path=None, expected_sha256=None):
         if key in cleaned:
             raise ValueError(f"Duplicate checkpoint key after prefix removal: {key}")
         cleaned[key] = value
+
+    is_hybrid = isinstance(model, HybridInceptionResNet3D)
+    excluded_prefixes = ("fc.", "spatial_pool.", "layer4.") if is_hybrid else ("fc.", "spatial_pool.")
+
     target_all = {
-        k: v for k, v in model.state_dict().items() if not k.startswith("fc.")
+        k: v
+        for k, v in model.state_dict().items()
+        if not k.startswith(excluded_prefixes)
     }
     target = {k: v for k, v in target_all.items() if not k.endswith("num_batches_tracked")}
     compatible = {
@@ -52,7 +60,8 @@ def load_medicalnet(model, path, report_path=None, expected_sha256=None):
         for k in target
         if k not in compatible and not k.endswith("num_batches_tracked")
     ]
-    ignored = [k for k in cleaned if k.startswith(("fc.", "conv_seg."))]
+    ignored_prefixes = ("fc.", "conv_seg.", "layer4.") if is_hybrid else ("fc.", "conv_seg.")
+    ignored = [k for k in cleaned if k.startswith(ignored_prefixes)]
     unexpected = [k for k in cleaned if k not in target_all and k not in ignored]
     nonfinite = [
         k
@@ -60,6 +69,8 @@ def load_medicalnet(model, path, report_path=None, expected_sha256=None):
         if v.is_floating_point() and not torch.isfinite(v).all()
     ]
     report = {
+        "architecture": type(model).__name__,
+        "hybrid_stem_transfer": is_hybrid,
         "checkpoint_sha256": checkpoint_sha256,
         "expected_sha256": expected_sha256,
         "sha256_match": checkpoint_sha256 == expected_sha256
@@ -71,7 +82,9 @@ def load_medicalnet(model, path, report_path=None, expected_sha256=None):
         "unexpected_keys": unexpected,
         "nonfinite_keys": nonfinite,
         "success": not missing and not unexpected and not nonfinite,
-        "backbone_tensor_fraction": sum(key in compatible for key in target) / len(target),
+        "backbone_tensor_fraction": sum(key in compatible for key in target) / len(target)
+        if target
+        else 0.0,
     }
     if report_path:
         Path(report_path).write_text(json.dumps(report, indent=2))

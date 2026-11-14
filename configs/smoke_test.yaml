@@ -15,14 +15,18 @@ data:
   spacing_tolerance: 0.05
   orientation: RAS
   normalization: minmax
+  apply_companion_mask: false
   preprocessing_confirmed: false
   reference_image: null
   reference_grid_mode: exact
   expected_split_sizes: {train: 8, val: 4, test: 4}
 
 model:
+  architecture: ResNet18
   pretrained: false
   base_channels: 8
+  dropout: 0.0
+  pooling: gap
 
 augmentation:
   enabled: false

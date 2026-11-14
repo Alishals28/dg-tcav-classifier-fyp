@@ -1,5 +1,5 @@
 experiment:
-  name: medicalnet_resnet18
+  name: dg_tcav_classifier
   seed: 42
   output_dir: outputs
   smoke_test: false
@@ -7,14 +7,15 @@ experiment:
 data:
   manifest_path: data/preprocessed_128_classifier_inputs/classifier_manifest.csv
   splits_path: data/preprocessed_128_classifier_inputs/classifier_splits.json
-  volume_dir: data/preprocessed_scans
+  volume_dir: /content/preprocessed_128
   file_pattern: "{subject_id}_preprocessed_128.nii.gz"
   expected_shape: [128, 128, 128]
   expected_spacing: [1.1926161, 1.4749262, 1.2387075]
   spacing_tolerance: 0.03
   orientation: RAS
   normalization: none
-  expected_split_sizes: {train: null, val: null, test: null}
+  apply_companion_mask: false
+  expected_split_sizes: {train: 1112, val: 236, test: 245}
   preprocessing_confirmed: true
   reference_image: template/mni152.nii.gz
   reference_grid_mode: same_fov
@@ -25,8 +26,11 @@ model:
   num_classes: 4
   pretrained: false
   pretrained_checkpoint: null
+  pretrained_checkpoint_sha256: null
   base_channels: 64
   shortcut: A
+  dropout: 0.0
+  pooling: gap
 
 augmentation:
   enabled: false
@@ -38,14 +42,20 @@ augmentation:
 training:
   optimizer: adamw
   betas: [0.9, 0.999]
-  epochs: 50
+  epochs: 100
   batch_size: 4
   num_workers: 2
   learning_rate: 0.0001
   weight_decay: 0.0001
+  l2_lambda: 0.0
   min_learning_rate: 0.000001
+  warmup_epochs: 0
+  backbone_lr_scale: 1.0
+  label_smoothing: 0.0
+  ordinal_loss_weight: 0.0
+  balanced_sampler: false
   weighted_loss: true
-  early_stopping_patience: 10
+  early_stopping_patience: 15
   selection_metric: macro_f1
   mixed_precision: true
   gradient_clip_norm: 1.0

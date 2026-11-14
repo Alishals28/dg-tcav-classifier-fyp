@@ -1,0 +1,22 @@
+extends: base.yaml
+
+experiment:
+  name: resnet18_medicalnet_candidate_c
+  output_dir: /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs
+
+model:
+  architecture: ResNet18
+  pretrained: true
+  pretrained_checkpoint: /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/resnet_18_23dataset.pth
+  pretrained_checkpoint_sha256: 61224f9317fcce873366deb3703183e92cc47325b726b69691b33536244e10f4
+  dropout: 0.0
+  pooling: gap
+
+augmentation:
+  enabled: false
+
+training:
+  balanced_sampler: false
+  weighted_loss: true
+  learning_rate: 0.0001
+  weight_decay: 0.0001

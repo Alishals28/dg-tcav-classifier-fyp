@@ -1,158 +1,43 @@
-# DG-TCAV classifier
+# DG-TCAV 3D MRI Classifier
 
-Four-class classification of baseline ADNI T1 MRI scans: CN, EMCI, LMCI, and AD.
-The repository implements a MedicalNet-compatible 3D ResNet-18 with a four-class classification head.
-Real-data profiles use the project's preprocessed 128×128×128 NIfTI scans.
-MRI preprocessing and diffusion generation are separate project components.
+Four-class Alzheimer's disease staging (`CN`, `EMCI`, `LMCI`, `AD`) on `128×128×128` MNI152-aligned T1-weighted structural MRI scans from ADNI (`N = 1,593` unique baseline subjects: `1,112` train, `236` validation, `245` locked test).
 
-This repository contains code, documentation, and de-identified study manifests and
-splits, but excludes raw/preprocessed MRI volumetric scans, pretrained checkpoint binaries,
-and large training run outputs. Those large binary files are hosted on Google Drive and
-kept out of Git. The current scan inventory and run guidance are in the
-[Colab runbook](docs/HANDOFF_AND_RUNBOOK.md); historical checks and limitations
-are recorded in [verification](docs/VERIFICATION.md).
-For a staged, evidence-first plan to improve and evaluate the four-class model,
-see the [model-improvement roadmap](docs/MODEL_IMPROVEMENT_ROADMAP.md).
-The current Phase 0–1 execution evidence and open checks are in the
-[Phase 0–1 checklist](docs/PHASE_0_1_CHECKLIST.md).
-For separate actionable checklists for every roadmap phase, see the
-[phase checklist index](docs/PHASE_CHECKLISTS.md).
+## Key Features & Supervisor Upgrades Included
 
-## Install
+1. **Three Supported 3D Architectures (`src/model.py`) with 512-D TCAV Bottleneck**:
+   - `ResNet18`: Full MedicalNet 3D ResNet-18 (`resnet_18_23dataset.pth`) with configurable `dropout` (default `0.5` in regularized profile) and spatial attention pooling.
+   - `HybridInceptionResNet3D`: **MedicalNet-pretrained 3D ResNet stem (`conv1`..`layer3`) + Multi-Scale 3D Inception-ResNet `layer4`** ($1^3$, $3^3$, dilated $5^3$ RF, and MaxPool branches with residual skip connections). Loads 100% of `conv1`..`layer3` weights from `resnet_18_23dataset.pth`.
+   - `Inception3D`: Low-compute multi-scale 3D Inception network (~3.1M parameters, 10× smaller than ResNet-18).
+2. **Medial-Temporal 3D Spatial Attention Pooling (`pooling: roi_attention | attention | gap`)**:
+   - Prevents flat $16 	imes 16 	imes 16$ Global Average Pooling from washing out localized hippocampal/entorhinal atrophy with 97% normal background brain tissue.
+3. **Head Warm-Up & Layer-Wise Differential Learning Rates (`src/train.py`)**:
+   - `warmup_epochs: 5` freezes `conv1`..`layer3` while warming up the classification head and `layer4`, then unfreezes the stem at `backbone_lr_scale: 0.2` (5× lower learning rate than the head).
+4. **L2 Regularization Sweep (`weight_decay` & `l2_lambda`), Label Smoothing, & Ordinal Continuum Penalty (`src/engine.py`)**:
+   - Supports decoupled `weight_decay`, explicit L2 weight norm penalty `l2_lambda`, `label_smoothing`, and ordinal continuum loss (`ordinal_loss_weight`) along $	ext{CN} 	o 	ext{EMCI} 	o 	ext{LMCI} 	o 	ext{AD}$, with `augmentation.enabled: false`.
+5. **Companion Brain Masking (`apply_companion_mask: true`) & Explicit Pairwise Sub-Task Logging**:
+   - Applies `{subject_id}_preprocessed_128_mask.nii.gz` when present and logs `AD_vs_CN` and `EMCI_vs_LMCI` accuracy at every epoch.
 
-Use Python 3.10 or newer. In Colab, preserve the runtime's compatible PyTorch
-installation if it already includes CUDA support.
+## Clean Repository Structure
 
-```bash
-pip install -r requirements.txt
-pip install -e . --no-deps
+```text
+├── configs/
+│   ├── base.yaml                              # Base defaults & 1,593-subject data contract
+│   ├── resnet18_medicalnet.yaml               # Locked Candidate C reference (0.4459 Val F1 / 48.31% Acc)
+│   ├── resnet18_medicalnet_regularized.yaml   # MedicalNet ResNet-18 + Dropout 0.5 + L2 + ROI Attention + Warmup
+│   ├── hybrid_inception_resnet3d.yaml         # Hybrid MedicalNet Stem + 3D Inception-ResNet + Dropout 0.5 + L2
+│   ├── inception3d.yaml                       # Low-compute Multi-Scale 3D Inception (~3.1M params)
+│   └── smoke_test.yaml                        # Fast synthetic CPU profile for pytest
+├── data/preprocessed_128_classifier_inputs/   # Audited 1,593-subject manifest & subject-level splits
+├── docs/                                      # Runbook, code walkthrough & supervisor meeting report
+├── notebooks/train.ipynb                      # Clean 6-cell Google Colab launcher
+├── scripts/
+│   ├── run_l2_sweep.py                        # Automated L2 regularization (lambda) sweep runner
+│   ├── prepare_preprocessed_manifest.py       # Reconcile manifest from preprocessing logs
+│   ├── validate_dataset.py                    # Audit NIfTI geometry, affines & SHA-256 hashes
+│   ├── inspect_volume.py                      # Orthogonal 3-plane slice viewer
+│   ├── tiny_overfit.py                        # 8-scan memorization sanity check
+│   └── make_synthetic.py                      # Synthetic 16^3 dataset generator for unit tests
+├── src/                                       # Core package
+├── template/mni152.nii.gz                     # Reference MNI152 template
+└── tests/                                     # Automated pytest suite
 ```
-
-## Data contract
-
-| Input | Requirement |
-|---|---|
-| Classifier manifest | Tracked at `data/preprocessed_128_classifier_inputs/classifier_manifest.csv` |
-| Split JSON | Tracked at `data/preprocessed_128_classifier_inputs/classifier_splits.json` |
-| Volume | `{subject_id}_preprocessed_128.nii.gz`, shape 128×128×128 |
-| Spacing | Approximately 1.192616×1.474926×1.238708 mm |
-| Orientation | RAS in the template and sample headers |
-| Reference | Tracked at `template/mni152.nii.gz` |
-| Intensities | Already normalized; use `normalization: none` |
-
-The prepared manifest, splits, and reference template are bundled directly with
-the repository. Only the large preprocessed MRI scans and training outputs reside
-on Google Drive.
-
-The checked sample headers have the expected shape, spacing, orientation, and
-field-of-view lengths. Their affine origin is zero, unlike the MNI reference
-origin. The configured `same_fov` check validates orientation and physical
-extent, not world-coordinate origin. Preprocessing QC is a separate requirement;
-header compatibility alone does not establish anatomical quality. See the
-[runbook](docs/HANDOFF_AND_RUNBOOK.md) for this distinction and the atlas-alignment
-limitation.
-
-## Colab Workflow
-
-Mount Google Drive in Colab and clone this repository. The preprocessed scans
-must be available at `/content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/preprocessed_128/`.
-
-Regenerate classifier inputs from the latest preprocessing report into a new
-directory before each updated training run:
-```bash
-ROOT=/content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS
-python -m scripts.prepare_preprocessed_manifest \
-  --baseline-manifest "$ROOT/classifier_setup/cohort_a_baseline_manifest.csv" \
-  --splits "$ROOT/classifier_setup/cohort_a_splits.json" \
-  --preprocessing-manifest "$ROOT/classifier_setup/preprocessing_manifest.csv" \
-  --output-dir "data/preprocessed_128_classifier_inputs"
-```
-
-The 1,593-subject manifest and splits are already tracked; pass --overwrite if refreshing in-place. The output contains `classifier_manifest.csv`,
-`classifier_splits.json`, and `preprocessing_summary.json`. Review the summary,
-especially the final-success count, retry count, missing-status subjects, and
-class counts by split. The training split must contain all four classes.
-
-## Audit and train on Colab
-
-Reading scans straight from the mounted Drive is slow, so first copy them to the
-Colab VM disk (repeat after every runtime reset):
-
-```bash
-mkdir -p /content/preprocessed_128
-rsync -a --include='*_preprocessed_128.nii.gz' --exclude='*' \
-  /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/preprocessed_128/ \
-  /content/preprocessed_128/
-```
-
-`configs/colab_medicalnet_resnet18_128.yaml` reads scans from that copy, loads
-MedicalNet weights from Drive, and writes outputs to Drive. It uses batch size 4
-and mixed precision. Confirm the checkpoint exists and the audit reports the
-intended cohort before starting the full run. Resume a run with the exact config
-it started with.
-First audit the actual files and run the small overfit check:
-
-```bash
-python -m scripts.validate_dataset --config configs/colab_medicalnet_resnet18_128.yaml
-python -m scripts.tiny_overfit \
-  --config configs/colab_medicalnet_resnet18_128.yaml \
-  --output /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs/tiny_overfit
-```
-
-If those checks pass, run a short trial and then the planned training run:
-
-```bash
-python -m src.train --config configs/colab_medicalnet_resnet18_128.yaml --stop-after-epoch 2
-python -m src.train --config configs/colab_medicalnet_resnet18_128.yaml
-```
-
-This profile uses AdamW, a balanced sampler, and no weighted loss to avoid
-correcting class imbalance twice. The loader records the checkpoint SHA-256 and
-can compare it with a trusted expected digest configured in the model section.
-
-Training uses train and validation images only. Choose the model using validation
-results, freeze the choices, and then evaluate the held-out test set explicitly:
-
-```bash
-python -m src.evaluate \
-  --config configs/colab_medicalnet_resnet18_128.yaml \
-  --checkpoint PATH_TO_RUN/best.pt --split test --confirm-final-test
-```
-
-Export validation activations for later analysis:
-
-```bash
-python -m src.export_activations \
-  --config configs/colab_medicalnet_resnet18_128.yaml \
-  --checkpoint PATH_TO_RUN/best.pt --split val \
-  --output /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs/features
-```
-
-Feature export does not define a TCAV bottleneck or scoring procedure. Those
-research choices require separate justification; see the [code walkthrough](docs/CODE_WALKTHROUGH.md).
-
-## Synthetic software profile
-
-The synthetic profile uses artificial 16³ volumes and a reduced model width. It
-checks software behavior only; it is not evidence of diagnostic performance.
-
-```bash
-python -m scripts.make_synthetic
-python -m src.train --config configs/smoke_test.yaml
-python -m scripts.tiny_overfit --config configs/smoke_test.yaml
-```
-
-Run the automated suite after installing development requirements with
-`pip install -r requirements-dev.txt` and `python -m pytest`.
-
-## Repository map
-
-- `src/`: configuration, dataset, model, training, evaluation, and feature export.
-- `scripts/`: preprocessing-manifest preparation, dataset audit, volume inspection,
-  and synthetic-data utilities.
-- `configs/`: current CNN profiles, retained ResNet comparison profiles, and the
-  isolated synthetic profile.
-- `tests/`: automated unit and synthetic workflow checks.
-- `docs/`: runbook, implementation walkthrough, and verification record.
-
-See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for MedicalNet attribution.

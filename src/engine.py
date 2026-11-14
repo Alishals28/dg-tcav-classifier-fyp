@@ -1,4 +1,4 @@
-"""Data loaders, class weights and the epoch loop shared by training and evaluation."""
+"""Data loaders, class weights, ordinal/L2 regularization, and epoch loop."""
 
 import random
 
@@ -13,7 +13,7 @@ except ImportError:
     tqdm = None
 
 from .dataset import MRIDataset
-from .metrics import classification_metrics
+from .metrics import classification_metrics, pairwise_metrics
 from .transforms import build_transform
 
 
@@ -65,9 +65,39 @@ def make_loader(index, split, config, generator=None):
         num_workers=settings["num_workers"],
         worker_init_fn=seed_worker,
         generator=generator,
+        pin_nable=False if not hasattr(torch.cuda, "is_available") else None,
+        pin_memory=torch.cuda.is_available(),
+        drop_last=False,
+    ) if False else DataLoader(
+        dataset,
+        batch_size=settings["batch_size"],
+        shuffle=split == "train" and sampler is None,
+        sampler=sampler,
+        num_workers=settings["num_workers"],
+        worker_init_fn=seed_worker,
+        generator=generator,
         pin_memory=torch.cuda.is_available(),
         drop_last=False,
     )
+
+
+def _ordinal_continuum_penalty(logits, targets):
+    """Penalize predictions proportionally to stage distance |k - y| along CN(0)->EMCI(1)->LMCI(2)->AD(3)."""
+    probs = torch.softmax(logits, dim=1)
+    classes = torch.arange(logits.shape[1], device=logits.device, dtype=probs.dtype).unsqueeze(0)
+    distances = torch.abs(classes - targets.unsqueeze(1).to(probs.dtype)) / 3.0
+    return (probs * distances).sum(dim=1).mean()
+
+
+def _l2_parameter_penalty(model):
+    """Compute mean L2 norm squared across trainable weight tensors (excluding BatchNorm/bias)."""
+    l2_sum = torch.tensor(0.0, device=next(model.parameters()).device)
+    count = 0
+    for name, param in model.named_parameters():
+        if param.requires_grad and param.ndim >= 2 and "bn" not in name:
+            l2_sum = l2_sum + torch.sum(param ** 2)
+            count += param.numel()
+    return l2_sum / max(count, 1)
 
 
 def run_epoch(
@@ -79,12 +109,10 @@ def run_epoch(
     scaler=None,
     clip_norm=0.0,
     desc=None,
+    l2_lambda=0.0,
+    ordinal_loss_weight=0.0,
 ):
-    """Return epoch metrics and predictions with their subject IDs.
-
-    Weighted cross-entropy divides by the sum of target-class weights.
-    Accumulate that denominator across batches when reporting epoch loss.
-    """
+    """Return epoch metrics (including pairwise AD_vs_CN and EMCI_vs_LMCI) and subject predictions."""
     training = optimizer is not None
     model.train(training)
     numerator = denominator = 0.0
@@ -103,18 +131,22 @@ def run_epoch(
             torch.autocast(device_type=device.type, enabled=amp),
         ):
             logits = model(images)
-            loss = criterion(logits, targets)
+            ce_loss = criterion(logits, targets)
+            loss = ce_loss
+            if training and ordinal_loss_weight > 0.0:
+                loss = loss + float(ordinal_loss_weight) * _ordinal_continuum_penalty(
+                    logits, targets
+                )
+            if training and l2_lambda > 0.0:
+                loss = loss + float(l2_lambda) * _l2_parameter_penalty(model)
         if not torch.isfinite(loss):
             raise FloatingPointError(
                 "Non-finite loss; stop and inspect input/model values"
             )
         if training:
             scaler.scale(loss).backward()
-            # Clip the actual gradients, after undoing AMP's loss scaling.
             scaler.unscale_(optimizer)
             if clip_norm > 0:
-                # Under AMP, early steps can overflow; scaler.step skips them and
-                # lowers the scale. Without AMP a non-finite norm means divergence.
                 nn.utils.clip_grad_norm_(
                     model.parameters(), clip_norm, error_if_nonfinite=not amp
                 )
@@ -122,10 +154,10 @@ def run_epoch(
             scaler.update()
         weight_sum = (
             float(criterion.weight[targets].sum().item())
-            if criterion.weight is not None
+            if getattr(criterion, "weight", None) is not None
             else len(targets)
         )
-        numerator += loss.item() * weight_sum
+        numerator += ce_loss.item() * weight_sum
         denominator += weight_sum
         if desc and tqdm is not None and hasattr(iterator, "set_postfix"):
             iterator.set_postfix({"loss": f"{numerator / denominator:.4f}"})
@@ -149,4 +181,8 @@ def run_epoch(
             )
     result = classification_metrics(labels, probabilities)
     result["loss"] = numerator / denominator
+    pw = pairwise_metrics(labels, probabilities)
+    result["pairwise"] = pw
+    result["ad_vs_cn_acc"] = pw.get("AD_vs_CN", {}).get("forced_pair_accuracy")
+    result["emci_vs_lmci_acc"] = pw.get("EMCI_vs_LMCI", {}).get("forced_pair_accuracy")
     return result, records

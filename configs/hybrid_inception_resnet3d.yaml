@@ -1,0 +1,33 @@
+extends: base.yaml
+
+# Hybrid 3D Inception-ResNet WITH MedicalNet pretrained weights (`conv1`..`layer3` loaded from
+# `resnet_18_23dataset.pth`, `layer4` uses multi-scale 3D Inception-ResNet blocks) + Dropout 0.5 + L2.
+experiment:
+  name: hybrid_medicalnet_inception_resnet3d
+  output_dir: /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs
+
+data:
+  apply_companion_mask: true
+
+model:
+  architecture: HybridInceptionResNet3D
+  pretrained: true
+  pretrained_checkpoint: /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/resnet_18_23dataset.pth
+  pretrained_checkpoint_sha256: 61224f9317fcce873366deb3703183e92cc47325b726b69691b33536244e10f4
+  dropout: 0.5
+  pooling: roi_attention
+
+augmentation:
+  enabled: false
+
+training:
+  balanced_sampler: false
+  weighted_loss: true
+  learning_rate: 0.0001
+  min_learning_rate: 0.000001
+  weight_decay: 0.01
+  l2_lambda: 0.001
+  warmup_epochs: 5
+  backbone_lr_scale: 0.2
+  label_smoothing: 0.05
+  ordinal_loss_weight: 0.15

@@ -1,4 +1,4 @@
-"""YAML configuration loading with inheritance and basic validation."""
+"""YAML configuration loading with inheritance and validation."""
 
 from __future__ import annotations
 
@@ -66,6 +66,11 @@ def _validate_config(config: dict[str, Any]) -> None:
             raise ValueError(
                 f"{section}.{key} must be a YAML boolean, not a quoted string"
             )
+    if "apply_companion_mask" in config["data"] and type(
+        config["data"]["apply_companion_mask"]
+    ) is not bool:
+        raise ValueError("data.apply_companion_mask must be a YAML boolean")
+
     for section, key, minimum in (
         ("training", "epochs", 1),
         ("training", "batch_size", 1),
@@ -80,6 +85,10 @@ def _validate_config(config: dict[str, Any]) -> None:
         value = config[section][key]
         if type(value) is not int or value < minimum:
             raise ValueError(f"{section}.{key} must be an integer >= {minimum}")
+    warmup = config["training"].get("warmup_epochs", 0)
+    if type(warmup) is not int or warmup < 0:
+        raise ValueError("training.warmup_epochs must be a nonnegative integer")
+
     sizes = config["data"]["expected_split_sizes"]
     if set(sizes) != {"train", "val", "test"} or any(
         n is not None and (type(n) is not int or n < 1) for n in sizes.values()
@@ -116,8 +125,28 @@ def _validate_config(config: dict[str, Any]) -> None:
     if config["model"].get("num_classes") != 4:
         raise ValueError("This project is defined as a four-class classifier")
     architecture = config["model"].get("architecture", "ResNet18")
-    if architecture != "ResNet18":
-        raise ValueError(f"Unsupported model architecture: {architecture}. Supported: ResNet18")
+    if architecture not in {
+        "ResNet18",
+        "Inception3D",
+        "InceptionResNet3D",
+        "HybridInceptionResNet3D",
+    }:
+        raise ValueError(
+            f"Unsupported model architecture: {architecture}. "
+            "Supported: ResNet18, Inception3D, InceptionResNet3D, HybridInceptionResNet3D"
+        )
+    dropout = config["model"].get("dropout", 0.0)
+    if (
+        not isinstance(dropout, (int, float))
+        or isinstance(dropout, bool)
+        or not (0.0 <= float(dropout) < 1.0)
+    ):
+        raise ValueError("model.dropout must be a number in [0.0, 1.0)")
+    pooling = config["model"].get("pooling", "gap")
+    if pooling not in {"gap", "attention", "roi_attention"}:
+        raise ValueError(
+            f"Unsupported model.pooling: {pooling}. Supported: gap, attention, roi_attention"
+        )
     if config["training"].get("optimizer", "adamw").lower() not in {"adam", "adamw"}:
         raise ValueError("training.optimizer must be adam or adamw")
     if "balanced_sampler" in config["training"] and type(
@@ -138,6 +167,10 @@ def _validate_config(config: dict[str, Any]) -> None:
         t["early_stopping_patience"] < 1
         or t["weight_decay"] < 0
         or t["gradient_clip_norm"] < 0
+        or float(t.get("l2_lambda", 0.0)) < 0
+        or float(t.get("ordinal_loss_weight", 0.0)) < 0
+        or not (0.0 <= float(t.get("label_smoothing", 0.0)) < 1.0)
+        or float(t.get("backbone_lr_scale", 1.0)) <= 0
     ):
         raise ValueError("Invalid training parameter")
     if config["data"]["normalization"] not in {"none", "minmax", "zscore"}:
@@ -174,7 +207,3 @@ def require_preprocessing(config: dict[str, Any]) -> None:
         raise ValueError(
             "Scientific runs require the full-width model (base_channels=64)"
         )
-    # The declared shape and spacing are checked against every image and the
-    # reference image by dataset.load_volume. Keep the gate focused on requiring
-    # an explicitly confirmed preprocessing handoff instead of hard-coding one
-    # team's grid here; approved preprocessing pipelines can use other grids.

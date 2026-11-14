@@ -110,8 +110,13 @@ def evaluate(config, checkpoint, split="test", output=None):
     )
     write_json(output / f"{split}_metrics.json", metrics)
     plot_evaluation(labels, probabilities, metrics, output)
+    ad_cn = metrics["pairwise"].get("AD_vs_CN", {}).get("forced_pair_accuracy")
+    emci_lmci = metrics["pairwise"].get("EMCI_vs_LMCI", {}).get("forced_pair_accuracy")
+    ad_cn_val = ad_cn if ad_cn is not None else float("nan")
+    emci_lmci_val = emci_lmci if emci_lmci is not None else float("nan")
     print(
-        f"{split}: accuracy={metrics['accuracy']:.4f}, macro_f1={metrics['macro_f1']:.4f}. Outputs: {output}"
+        f"{split}: accuracy={metrics['accuracy']:.4f}, macro_f1={metrics['macro_f1']:.4f}, "
+        f"AD_vs_CN_acc={ad_cn_val:.4f}, EMCI_vs_LMCI_acc={emci_lmci_val:.4f}. Outputs: {output}"
     )
     return output
 

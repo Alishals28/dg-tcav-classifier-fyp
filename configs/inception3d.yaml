@@ -1,0 +1,27 @@
+extends: base.yaml
+
+experiment:
+  name: inception3d_multiscale_drop05_l2
+  output_dir: /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs
+
+data:
+  apply_companion_mask: true
+
+model:
+  architecture: Inception3D
+  pretrained: false
+  dropout: 0.5
+  pooling: roi_attention
+
+augmentation:
+  enabled: false
+
+training:
+  balanced_sampler: false
+  weighted_loss: true
+  learning_rate: 0.0001
+  min_learning_rate: 0.000001
+  weight_decay: 0.01
+  l2_lambda: 0.001
+  label_smoothing: 0.05
+  ordinal_loss_weight: 0.15

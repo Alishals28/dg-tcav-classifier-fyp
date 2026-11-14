@@ -1,0 +1,29 @@
+extends: resnet18_medicalnet.yaml
+
+# Incorporates:
+# 1. Supervisor directives: Dropout = 0.5, Augmentation = false, L2 regularization (weight_decay + l2_lambda)
+# 2. Architectural fixes: Medial-Temporal ROI Spatial Attention Pooling (`roi_attention`),
+#    5-epoch head warm-up (`warmup_epochs: 5`), differential backbone LR (`backbone_lr_scale: 0.2`),
+#    companion brain mask (`apply_companion_mask: true`), label smoothing (0.05), and ordinal continuum penalty (0.15).
+experiment:
+  name: resnet18_medicalnet_drop05_l2_roi_attn
+
+data:
+  apply_companion_mask: true
+
+model:
+  dropout: 0.5
+  pooling: roi_attention
+
+augmentation:
+  enabled: false
+
+training:
+  learning_rate: 0.00005
+  min_learning_rate: 0.0000005
+  weight_decay: 0.01
+  l2_lambda: 0.001
+  warmup_epochs: 5
+  backbone_lr_scale: 0.2
+  label_smoothing: 0.05
+  ordinal_loss_weight: 0.15

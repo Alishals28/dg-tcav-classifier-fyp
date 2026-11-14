@@ -68,3 +68,48 @@ def test_medicalnet_rejects_checkpoint_checksum_mismatch(tmp_path):
 def test_pretrained_requires_correct_architecture():
     with pytest.raises(ValueError, match="shortcut A"):
         load_medicalnet(ResNet18(base_channels=8), "unused")
+
+
+def test_dropout_pooling_and_hybrid_medicalnet_load(tmp_path):
+    from src.model import HybridInceptionResNet3D, ResNet18, build_model
+
+    for arch in ("ResNet18", "Inception3D", "InceptionResNet3D", "HybridInceptionResNet3D"):
+        for pool in ("gap", "attention", "roi_attention"):
+            model = build_model(
+                {
+                    "architecture": arch,
+                    "num_classes": 4,
+                    "base_channels": 8,
+                    "shortcut": "A",
+                    "dropout": 0.5,
+                    "pooling": pool,
+                }
+            )
+            x = torch.randn(2, 1, 16, 16, 16)
+            features = model.forward_features(x)
+            assert features.shape == (2, 64)
+            logits = model(x)
+            assert logits.shape == (2, 4)
+            act = model.get_layer4_activations(x)
+            grad = torch.autograd.grad(
+                model.forward_from_activations(act)[:, 0].sum(), act
+            )[0]
+            assert grad.shape == act.shape
+            assert torch.isfinite(grad).all()
+
+    # Verify HybridInceptionResNet3D loads MedicalNet stem (conv1..layer3) cleanly
+    ref_resnet = ResNet18()
+    state = {
+        "module." + k: v.clone()
+        for k, v in ref_resnet.state_dict().items()
+        if not k.startswith("fc.")
+    }
+    state["module.conv_seg.0.weight"] = torch.ones(1)
+    ckpt_path = tmp_path / "synthetic_medicalnet_hybrid.pth"
+    torch.save({"state_dict": state}, ckpt_path)
+
+    hybrid = HybridInceptionResNet3D(dropout=0.5, pooling="roi_attention")
+    report = load_medicalnet(hybrid, ckpt_path)
+    assert report["success"]
+    assert report["hybrid_stem_transfer"] is True
+    assert report["backbone_tensor_fraction"] == 1.0

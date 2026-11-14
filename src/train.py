@@ -1,4 +1,12 @@
-"""Train on Cohort A and select a checkpoint using validation macro-F1."""
+"""Train on Cohort A and select a checkpoint using validation macro-F1.
+
+Supports:
+- Head warm-up (`warmup_epochs`) freezing early pretrained stages (`conv1`..`layer3`)
+- Layer-wise differential learning rates (`backbone_lr_scale`)
+- L2 weight decay (`weight_decay`) and explicit L2 penalty (`l2_lambda`)
+- Label smoothing (`label_smoothing`) and ordinal continuum penalty (`ordinal_loss_weight`)
+- Explicit pairwise sub-task logging (`AD_vs_CN` and `EMCI_vs_LMCI` accuracy).
+"""
 
 import argparse
 import json
@@ -71,6 +79,33 @@ def restore_rng(state, generator):
         torch.cuda.set_rng_state_all(state["cuda"])
 
 
+def _configure_parameter_groups(model, settings):
+    """Create differential learning-rate parameter groups if backbone_lr_scale < 1.0."""
+    base_lr = settings["learning_rate"]
+    scale = float(settings.get("backbone_lr_scale", 1.0))
+    if abs(scale - 1.0) < 1e-8:
+        return model.parameters()
+    stem_prefixes = ("conv1.", "bn1.", "layer1.", "layer2.", "layer3.")
+    stem_params, head_params = [], []
+    for name, param in model.named_parameters():
+        if name.startswith(stem_prefixes):
+            stem_params.append(param)
+        else:
+            head_params.append(param)
+    return [
+        {"params": stem_params, "lr": base_lr * scale},
+        {"params": head_params, "lr": base_lr},
+    ]
+
+
+def _set_warmup_freeze(model, freeze_stem: bool):
+    """Freeze or unfreeze early backbone stages (`conv1`..`layer3`) during head warm-up."""
+    stem_prefixes = ("conv1.", "bn1.", "layer1.", "layer2.", "layer3.")
+    for name, param in model.named_parameters():
+        if name.startswith(stem_prefixes):
+            param.requires_grad = not freeze_stem
+
+
 def train(config, resume=None, stop_after_epoch=None):
     """Run training and validation, returning the run's output directory."""
     if stop_after_epoch is not None and stop_after_epoch < 1:
@@ -101,7 +136,6 @@ def train(config, resume=None, stop_after_epoch=None):
         (run_dir / "config.yaml").write_text(yaml.safe_dump(config, sort_keys=False))
         save_environment(run_dir / "environment.json")
 
-    # Check full split membership while keeping test images out of training.
     index = build_index(config["data"], resolve_splits=("train", "val"))
     audit = audit_dataset(index, config["data"], splits=("train", "val"))
     if state is not None and audit != state["data_audit"]:
@@ -129,14 +163,19 @@ def train(config, resume=None, stop_after_epoch=None):
     write_json(
         run_dir / "model_summary.json",
         {
+            "architecture": config["model"].get("architecture", "ResNet18"),
+            "pooling": config["model"].get("pooling", "gap"),
+            "dropout": float(config["model"].get("dropout", 0.0)),
             "parameter_count": sum(p.numel() for p in model.parameters()),
             "class_weights": weights.tolist() if weights is not None else None,
             "label_mapping": LABEL_TO_INDEX,
         },
     )
     settings = config["training"]
+    label_smoothing = float(settings.get("label_smoothing", 0.0))
     criterion = torch.nn.CrossEntropyLoss(
-        weight=weights.to(device) if weights is not None else None
+        weight=weights.to(device) if weights is not None else None,
+        label_smoothing=label_smoothing,
     )
     optimizer_name = settings.get("optimizer", "adamw").lower()
     optimizer_class = {
@@ -145,8 +184,9 @@ def train(config, resume=None, stop_after_epoch=None):
     }.get(optimizer_name)
     if optimizer_class is None:
         raise ValueError(f"Unsupported optimizer: {optimizer_name}")
+    param_groups = _configure_parameter_groups(model, settings)
     optimizer = optimizer_class(
-        model.parameters(),
+        param_groups,
         lr=settings["learning_rate"],
         weight_decay=settings["weight_decay"],
         betas=tuple(settings.get("betas", (0.9, 0.999))),
@@ -158,7 +198,6 @@ def train(config, resume=None, stop_after_epoch=None):
         "cuda", enabled=settings["mixed_precision"] and device.type == "cuda"
     )
     start, best, bad_epochs, history = 0, -1.0, 0, []
-    # Restore RNG last: constructing the model above consumes random numbers.
     if state is not None:
         model.load_state_dict(state["model_state_dict"], strict=True)
         optimizer.load_state_dict(state["optimizer_state_dict"])
@@ -177,11 +216,17 @@ def train(config, resume=None, stop_after_epoch=None):
         ):
             raise ValueError("This run has already completed or early-stopped")
 
+    warmup_epochs = int(settings.get("warmup_epochs", 0))
+    l2_lambda = float(settings.get("l2_lambda", 0.0))
+    ordinal_loss_weight = float(settings.get("ordinal_loss_weight", 0.0))
+
     for epoch in range(start + 1, settings["epochs"] + 1):
         import time
 
         started = time.perf_counter()
-        lr = optimizer.param_groups[0]["lr"]
+        if warmup_epochs > 0:
+            _set_warmup_freeze(model, freeze_stem=(epoch <= warmup_epochs))
+        lr = optimizer.param_groups[-1]["lr"]
         training, _ = run_epoch(
             model,
             train_loader,
@@ -191,6 +236,8 @@ def train(config, resume=None, stop_after_epoch=None):
             scaler,
             settings["gradient_clip_norm"],
             desc=f"Epoch {epoch}/{settings['epochs']} [Train]",
+            l2_lambda=l2_lambda,
+            ordinal_loss_weight=ordinal_loss_weight,
         )
         validation, predictions = run_epoch(
             model,
@@ -201,7 +248,6 @@ def train(config, resume=None, stop_after_epoch=None):
         )
         score = validation["macro_f1"]
         improved = score > best
-        # A tied score keeps the earlier checkpoint and counts toward patience.
         best, bad_epochs = (score, 0) if improved else (best, bad_epochs + 1)
         scheduler.step()
         row = {
@@ -210,11 +256,25 @@ def train(config, resume=None, stop_after_epoch=None):
             "seconds": time.perf_counter() - started,
             **{
                 f"train_{k}": training[k]
-                for k in ("loss", "accuracy", "macro_f1", "balanced_accuracy")
+                for k in (
+                    "loss",
+                    "accuracy",
+                    "macro_f1",
+                    "balanced_accuracy",
+                    "ad_vs_cn_acc",
+                    "emci_vs_lmci_acc",
+                )
             },
             **{
                 f"val_{k}": validation[k]
-                for k in ("loss", "accuracy", "macro_f1", "balanced_accuracy")
+                for k in (
+                    "loss",
+                    "accuracy",
+                    "macro_f1",
+                    "balanced_accuracy",
+                    "ad_vs_cn_acc",
+                    "emci_vs_lmci_acc",
+                )
             },
         }
         history.append(row)
@@ -234,7 +294,6 @@ def train(config, resume=None, stop_after_epoch=None):
             "data_audit": audit,
         }
         save_checkpoint(run_dir / "last.pt", snapshot)
-        # Keep the selected model as well as the latest state needed for resume.
         if improved:
             save_checkpoint(run_dir / "best.pt", snapshot)
             pd.DataFrame(predictions).to_csv(
@@ -242,15 +301,25 @@ def train(config, resume=None, stop_after_epoch=None):
             )
             write_json(run_dir / "validation_metrics.json", validation)
         pd.DataFrame(history).to_csv(run_dir / "history.csv", index=False)
+        ad_cn = validation.get("ad_vs_cn_acc")
+        emci_lmci = validation.get("emci_vs_lmci_acc")
+        pair_str = (
+            f" ad_vs_cn={ad_cn:.4f} emci_vs_lmci={emci_lmci:.4f}"
+            if ad_cn is not None and emci_lmci is not None
+            else ""
+        )
         print(
             f"Epoch {epoch}/{settings['epochs']} loss={training['loss']:.4f} "
-            f"val_macro_f1={score:.4f} best={best:.4f} seconds={row['seconds']:.1f}",
+            f"val_acc={validation['accuracy']:.4f} val_macro_f1={score:.4f} "
+            f"best={best:.4f}{pair_str} seconds={row['seconds']:.1f}",
             flush=True,
         )
         if bad_epochs >= settings["early_stopping_patience"] or (
             stop_after_epoch and epoch >= stop_after_epoch
         ):
             break
+    if warmup_epochs > 0:
+        _set_warmup_freeze(model, freeze_stem=False)
     plot_history(pd.DataFrame(history), run_dir / "learning_curves.png")
     print(f"Run outputs: {run_dir}", flush=True)
     return run_dir
