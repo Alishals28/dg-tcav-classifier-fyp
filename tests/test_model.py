@@ -2,7 +2,7 @@ import pytest
 import torch
 
 from src.medicalnet import load_medicalnet
-from src.model import ResNet18, ShortcutA
+from src.model import ResNet18, ShortcutA, build_model
 
 
 def test_outputs_features_and_gradients():

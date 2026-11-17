@@ -606,8 +606,8 @@ class InceptionNet3D(nn.Module):
 
         self.layer1 = InceptionBlock3D(c, c, stride=1, use_residual=use_residual)
         self.layer2 = InceptionBlock3D(c, c * 2, stride=2, use_residual=use_residual)
-        self.layer3 = InceptionBlock3D(c, c * 4, stride=2, use_residual=use_residual)
-        self.layer4 = InceptionBlock3D(c, c * 8, stride=2, use_residual=use_residual)
+        self.layer3 = InceptionBlock3D(c * 2, c * 4, stride=2, use_residual=use_residual)
+        self.layer4 = InceptionBlock3D(c * 4, c * 8, stride=2, use_residual=use_residual)
 
         self.avgpool = nn.AdaptiveAvgPool3d(1)
         self.spatial_pool = _build_pooler(pooling, self.feature_dim)
