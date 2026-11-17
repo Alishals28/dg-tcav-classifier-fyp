@@ -113,3 +113,31 @@ def test_dropout_pooling_and_hybrid_medicalnet_load(tmp_path):
     assert report["success"]
     assert report["hybrid_stem_transfer"] is True
     assert report["backbone_tensor_fraction"] == 1.0
+
+
+def test_yang_resnet_cbam_variants_and_tcav_contract():
+    for arch, expected_dim in [
+        ("YangResNet18_CBAM", 256),
+        ("YangResNet34_CBAM", 256),
+        ("YangResNet50_CBAM", 1024),
+    ]:
+        config = {
+            "architecture": arch,
+            "num_classes": 4,
+            "base_channels": 32,
+            "shortcut": "B",
+            "use_cbam": True,
+            "cbam_reduction": 16,
+            "bottleneck_expansion": 4,
+            "dropout": 0.0,
+            "pooling": "gap",
+        }
+        model = build_model(config)
+        x = torch.randn(2, 1, 32, 32, 32, requires_grad=True)
+        act = model.get_layer4_activations(x)
+        assert act.shape == (2, expected_dim, 1, 1, 1)
+        logits = model.forward_from_activations(act)
+        assert logits.shape == (2, 4)
+        loss = logits.sum()
+        loss.backward()
+        assert x.grad is not None

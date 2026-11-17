@@ -116,7 +116,7 @@ def _validate_config(config: dict[str, Any]) -> None:
     if any(
         v < 0
         for k, v in config["augmentation"].items()
-        if k not in {"enabled", "blur_sigma"}
+        if k not in {"enabled", "blur_sigma", "mode", "flip_axes"}
     ):
         raise ValueError("Augmentation magnitudes must be nonnegative")
     blur_sigma = config["augmentation"].get("blur_sigma", (0.0, 1.5))
@@ -130,10 +130,14 @@ def _validate_config(config: dict[str, Any]) -> None:
         "Inception3D",
         "InceptionResNet3D",
         "HybridInceptionResNet3D",
+        "YangResNet18_CBAM",
+        "YangResNet34_CBAM",
+        "YangResNet50_CBAM",
     }:
         raise ValueError(
             f"Unsupported model architecture: {architecture}. "
-            "Supported: ResNet18, Inception3D, InceptionResNet3D, HybridInceptionResNet3D"
+            "Supported: ResNet18, Inception3D, InceptionResNet3D, HybridInceptionResNet3D, "
+            "YangResNet18_CBAM, YangResNet34_CBAM, YangResNet50_CBAM"
         )
     dropout = config["model"].get("dropout", 0.0)
     if (
@@ -203,7 +207,7 @@ def require_preprocessing(config: dict[str, Any]) -> None:
             "Preprocessing handoff missing: confirm QC and set data.reference_image. "
             "Do not use raw scans or set smoke_test to bypass this for real training."
         )
-    if config["model"]["base_channels"] != 64:
+    if config["model"]["base_channels"] not in {32, 64}:
         raise ValueError(
-            "Scientific runs require the full-width model (base_channels=64)"
+            "Scientific runs require base_channels=64 (MedicalNet) or base_channels=32 (Yang et al. 2025)"
         )

@@ -40,7 +40,7 @@ def load_medicalnet(model, path, report_path=None, expected_sha256=None):
         cleaned[key] = value
 
     is_hybrid = isinstance(model, HybridInceptionResNet3D)
-    excluded_prefixes = ("fc.", "spatial_pool.", "layer4.") if is_hybrid else ("fc.", "spatial_pool.")
+    excluded_prefixes = ("fc.", "spatial_pool.", "cbam.", "layer4.") if is_hybrid else ("fc.", "spatial_pool.", "cbam.")
 
     target_all = {
         k: v

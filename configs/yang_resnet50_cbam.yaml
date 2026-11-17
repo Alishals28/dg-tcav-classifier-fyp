@@ -1,0 +1,13 @@
+extends: yang_resnet18_cbam.yaml
+
+# ==============================================================================
+# Authentic Replication of Yang et al. (PLOS ONE 2025) — Model 3: 3D ResNet-50 + CBAM
+# Reference: Page 6 (Fig 2a Bottleneck block) & Page 7 (Table 2: [3, 4, 6, 3] Bottleneck blocks,
+#            F=[32, 64, 128, 256], CBAM after Layer 4)
+# ==============================================================================
+experiment:
+  name: yang2025_resnet50_cbam
+
+model:
+  architecture: YangResNet50_CBAM
+  bottleneck_expansion: 4

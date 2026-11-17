@@ -29,7 +29,7 @@ warnings.filterwarnings(
 from .config import load_config, require_preprocessing
 from .constants import LABEL_TO_INDEX
 from .dataset import audit_dataset, build_index
-from .engine import choose_device, class_weights, make_loader, run_epoch
+from .engine import choose_device, class_priors, class_weights, make_loader, run_epoch
 from .medicalnet import load_medicalnet
 from .model import build_model
 from .plots import plot_history
@@ -150,7 +150,10 @@ def train(config, resume=None, stop_after_epoch=None):
     val_loader = make_loader(
         index, "val", config, torch.Generator().manual_seed(seed + 1)
     )
-    weights = class_weights(index) if config["training"]["weighted_loss"] else None
+    weight_power = float(config["training"].get("class_weight_power", 1.0))
+    weights = class_weights(index, power=weight_power) if config["training"]["weighted_loss"] else None
+    logit_tau = float(config["training"].get("logit_adjustment_tau", 0.0))
+    logit_adj = (logit_tau * torch.log(class_priors(index).to(device) + 1e-12)).unsqueeze(0) if logit_tau > 0 else None
     model = build_model(config["model"], config["data"]["expected_shape"])
     if state is None and config["model"]["pretrained"]:
         load_medicalnet(
@@ -238,6 +241,7 @@ def train(config, resume=None, stop_after_epoch=None):
             desc=f"Epoch {epoch}/{settings['epochs']} [Train]",
             l2_lambda=l2_lambda,
             ordinal_loss_weight=ordinal_loss_weight,
+            logit_adjustment=logit_adj,
         )
         validation, predictions = run_epoch(
             model,
@@ -308,9 +312,12 @@ def train(config, resume=None, stop_after_epoch=None):
             if ad_cn is not None and emci_lmci is not None
             else ""
         )
+        cal_f1 = validation.get("calibrated_macro_f1", score)
+        acc_3c = validation.get("three_class_cn_mci_ad", {}).get("accuracy", 0.0)
         print(
             f"Epoch {epoch}/{settings['epochs']} loss={training['loss']:.4f} "
             f"val_acc={validation['accuracy']:.4f} val_macro_f1={score:.4f} "
+            f"(cal_f1={cal_f1:.4f} 3cls_acc={acc_3c:.4f}) "
             f"best={best:.4f}{pair_str} seconds={row['seconds']:.1f}",
             flush=True,
         )

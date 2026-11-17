@@ -1,0 +1,11 @@
+extends: yang_resnet18_cbam.yaml
+
+# ==============================================================================
+# Authentic Replication of Yang et al. (PLOS ONE 2025) — Model 2: 3D ResNet-34 + CBAM
+# Reference: Page 7 (Table 2: [3, 4, 6, 3] BasicBlocks, F=[32, 64, 128, 256], CBAM after Layer 4)
+# ==============================================================================
+experiment:
+  name: yang2025_resnet34_cbam
+
+model:
+  architecture: YangResNet34_CBAM

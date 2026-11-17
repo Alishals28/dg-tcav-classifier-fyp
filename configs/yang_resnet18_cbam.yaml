@@ -1,0 +1,46 @@
+extends: base.yaml
+
+# ==============================================================================
+# Authentic Replication of Yang et al. (PLOS ONE 2025) — Model 1: 3D ResNet-18 + CBAM
+# Reference: Page 5 (Data augmentation), Page 7 (Table 2: F=[32,64,128,256], 1x1x1 downsample,
+#            CBAM after Layer 4), Page 8 (batch_size=4, lr=0.0001, epochs=100)
+# ==============================================================================
+experiment:
+  name: yang2025_resnet18_cbam
+  output_dir: /content/drive/MyDrive/DG-TCAV_FYP_NUST/DG_TCAV_OUTPUTS/classifier_outputs
+
+data:
+  normalization: zscore
+  apply_companion_mask: true
+
+model:
+  architecture: YangResNet18_CBAM
+  num_classes: 4
+  pretrained: false
+  base_channels: 32
+  shortcut: B
+  use_cbam: true
+  cbam_reduction: 16
+  dropout: 0.0
+  pooling: gap
+
+augmentation:
+  enabled: true
+  mode: yang2025
+  degrees: 10
+  translation_mm: 5
+  scales: 0.05
+  noise_std: 0.05
+  blur_sigma: [0.5, 1.5]
+  mask_prob: 0.5
+
+training:
+  optimizer: adam
+  epochs: 100
+  batch_size: 4
+  learning_rate: 0.0001
+  min_learning_rate: 0.000001
+  weight_decay: 0.0001
+  balanced_sampler: true
+  weighted_loss: false
+  early_stopping_patience: 25
