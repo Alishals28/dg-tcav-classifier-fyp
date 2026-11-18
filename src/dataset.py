@@ -86,6 +86,13 @@ def build_index(data_config, resolve_splits=SPLIT_NAMES):
             for p in root.glob(pattern)
             if p.is_file() and str(p).endswith((".nii", ".nii.gz"))
         ]
+        if not matches and pattern.endswith(".nii.gz"):
+            # Fallback to uncompressed .nii if Kaggle/uploader extracted the dataset
+            matches = [
+                p.resolve()
+                for p in root.glob(pattern[:-3])
+                if p.is_file() and str(p).endswith((".nii", ".nii.gz"))
+            ]
         if len(matches) != 1:
             raise ValueError(
                 f"{row.subject_id}: expected one volume, found {len(matches)} for {pattern}"
@@ -162,6 +169,14 @@ def load_volume(path, data_config):
         mask_path = None
         if p_str.endswith(".nii.gz"):
             candidate = Path(p_str[:-7] + "_mask.nii.gz")
+            if candidate.is_file():
+                mask_path = candidate
+            else:
+                candidate_uncompressed = Path(p_str[:-7] + "_mask.nii")
+                if candidate_uncompressed.is_file():
+                    mask_path = candidate_uncompressed
+        elif p_str.endswith(".nii"):
+            candidate = Path(p_str[:-4] + "_mask.nii")
             if candidate.is_file():
                 mask_path = candidate
         if mask_path is not None:
