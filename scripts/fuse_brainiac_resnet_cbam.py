@@ -330,6 +330,11 @@ def run_extract(args):
     index_df = build_index(cfg["data"], resolve_splits=splits)
 
     for split in splits:
+        save_path = out_dir / f"cached_features_{split}.npz"
+        if save_path.exists() and not getattr(args, "overwrite", False):
+            print(f"[Extract] Skipping {split} split ({save_path.name} already exists). Use --overwrite to recompute.")
+            continue
+
         ds = MRIDataset(index_df, split, cfg["data"], transform=None)
         loader = DataLoader(ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
         total_batches = len(loader)
@@ -476,9 +481,77 @@ def run_train(args):
     print(f"\nSaved fusion checkpoint & predictions to {out_dir}")
 
 
+def run_test(args):
+    out_dir = Path(args.out_dir)
+    tr_path = out_dir / "cached_features_train.npz"
+    te_path = out_dir / "cached_features_test.npz"
+    ckpt_path = out_dir / "best_brainiac_resnet_fusion.pt"
+
+    if not te_path.exists():
+        raise FileNotFoundError(f"Missing {te_path}. Run --mode extract --include-test first!")
+    if not ckpt_path.exists():
+        raise FileNotFoundError(f"Missing {ckpt_path}. Run --mode train first!")
+
+    tr = np.load(tr_path)
+    te = np.load(te_path)
+    ckpt = torch.load(ckpt_path, map_location="cpu", weights_only=False)
+
+    # Standardize test features using TRAIN mean/std only (zero leakage)
+    def std_apply(a_tr, a_te):
+        mu = a_tr.mean(axis=0, keepdims=True)
+        sd = np.maximum(a_tr.std(axis=0, keepdims=True), 1e-6)
+        return torch.tensor((a_te - mu) / sd, dtype=torch.float32)
+
+    r34_te = std_apply(tr["f_r34"], te["f_r34"])
+    r18_te = std_apply(tr["f_r18"], te["f_r18"])
+    bi_te = std_apply(tr["f_brainiac"], te["f_brainiac"])
+    y_te = te["y"]
+
+    dims = ckpt["dims"]
+    bi_mlp = BrainIACMLP(in_dim=dims["fm"]).eval()
+    bi_mlp.load_state_dict(ckpt["brainiac_mlp_state_dict"])
+
+    fusion = GatedDualFusionMLP(dims["r34"], dims["r18"], dims["fm"]).eval()
+    fusion.load_state_dict(ckpt["fusion_state_dict"])
+
+    with torch.no_grad():
+        p_bi = F.softmax(bi_mlp(bi_te), dim=1).numpy()
+        p_fused = F.softmax(fusion(r34_te, r18_te, bi_te), dim=1).numpy()
+
+    # 1. Baseline: ResNet-34 + ResNet-18 + CBAM
+    p_ens3 = 0.5 * (te["p_r34"] + te["p_r18"])
+    report_metrics("LOCKED TEST — Baseline (ResNet-34 + ResNet-18 + CBAM)", y_te, p_ens3)
+
+    # 2. Winner: Probability Ensemble (ResNet-34 + ResNet-18 + BrainIAC)
+    p_prob_ens = 0.40 * te["p_r34"] + 0.35 * te["p_r18"] + 0.25 * p_bi
+    report_metrics("LOCKED TEST — Probability Ensemble (R34 + R18 + BrainIAC)", y_te, p_prob_ens)
+
+    # 3. Gated Feature-Fusion MLP
+    report_metrics("LOCKED TEST — Gated Feature-Fusion MLP", y_te, p_fused)
+
+    # 4. Prior-Calibrated Gated Fusion (using frozen val multipliers — zero test tuning)
+    mult = np.array(ckpt["prior_multipliers"], dtype=np.float64)
+    p_cal = p_fused * mult[None, :]
+    p_cal = p_cal / np.maximum(p_cal.sum(axis=1, keepdims=True), 1e-12)
+    report_metrics("LOCKED TEST — Prior-Calibrated Gated Fusion", y_te, p_cal)
+
+    out_csv = out_dir / "test_predictions_prob_ensemble.csv"
+    pd.DataFrame(
+        {
+            "subject_id": te["subject_id"],
+            "y_true": y_te,
+            "p_cn": p_prob_ens[:, 0],
+            "p_emci": p_prob_ens[:, 1],
+            "p_lmci": p_prob_ens[:, 2],
+            "p_ad": p_prob_ens[:, 3],
+        }
+    ).to_csv(out_csv, index=False)
+    print(f"\nSaved locked test predictions -> {out_csv}")
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument("--mode", choices=["extract", "train"], required=True)
+    p.add_argument("--mode", choices=["extract", "train", "test"], required=True)
     p.add_argument("--repo-root", default="/content/dg-tcav-classifier-fyp")
     p.add_argument("--config", default="/content/dg-tcav-classifier-fyp/configs/yang_resnet34_cbam.yaml")
     p.add_argument("--brainiac-ckpt", default="/content/BrainIAC/src/checkpoints/BrainIAC.ckpt")
@@ -488,11 +561,14 @@ def main():
     p.add_argument("--out-dir", required=True)
     p.add_argument("--batch-size", type=int, default=8)
     p.add_argument("--include-test", action="store_true")
+    p.add_argument("--overwrite", action="store_true", help="Overwrite existing cached features")
     args = p.parse_args()
     if args.mode == "extract":
         run_extract(args)
-    else:
+    elif args.mode == "train":
         run_train(args)
+    else:
+        run_test(args)
 
 
 if __name__ == "__main__":
