@@ -304,6 +304,8 @@ def report_metrics(name: str, y: np.ndarray, P: np.ndarray):
 # ---------------------------------------------------------------------------
 def run_extract(args):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    gpu_name = torch.cuda.get_device_name(0) if torch.cuda.is_available() else "CPU"
+    print(f"[Device] Extraction running on: {device} ({gpu_name})")
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -325,13 +327,15 @@ def run_extract(args):
     r18 = load_yang_checkpoint(repo_root, "YangResNet18_CBAM", args.resnet18_ckpt, device)
 
     splits = ["train", "val"] + (["test"] if args.include_test else [])
-    index_by_split = build_index(cfg["data"], resolve_splits=splits)
+    index_df = build_index(cfg["data"], resolve_splits=splits)
 
     for split in splits:
-        ds = MRIDataset(index_by_split[split], cfg["data"], transform=None)
+        ds = MRIDataset(index_df, split, cfg["data"], transform=None)
         loader = DataLoader(ds, batch_size=args.batch_size, shuffle=False, num_workers=2)
+        total_batches = len(loader)
+        print(f"\n[Extract] Starting {split} split ({len(ds)} scans, {total_batches} batches)...")
         f_r34_l, p_r34_l, f_r18_l, p_r18_l, f_bi_l, y_l, sid_l = [], [], [], [], [], [], []
-        for batch in loader:
+        for batch_idx, batch in enumerate(loader):
             x = batch["image"].to(device, non_blocking=True)
             y = batch["label"].numpy()
             f34, p34 = extract_yang_multiscale(r34, x)
@@ -346,6 +350,8 @@ def run_extract(args):
             f_bi_l.append(bi_cat.cpu().numpy())
             y_l.append(y)
             sid_l.extend(batch.get("subject_id", [""] * len(y)))
+            if (batch_idx + 1) % 25 == 0 or (batch_idx + 1) == total_batches:
+                print(f"  [{split}] Batch {batch_idx + 1}/{total_batches} completed")
 
         save_path = out_dir / f"cached_features_{split}.npz"
         np.savez_compressed(
