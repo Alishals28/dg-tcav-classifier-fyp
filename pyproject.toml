@@ -10,7 +10,7 @@ requires-python = ">=3.10"
 dynamic = ["dependencies"]
 
 [tool.setuptools]
-packages = ["src", "scripts"]
+packages = ["src", "src.diffusion", "scripts"]
 
 [tool.setuptools.dynamic]
 dependencies = {file = ["requirements.txt"]}

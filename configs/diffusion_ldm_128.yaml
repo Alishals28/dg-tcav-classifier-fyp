@@ -1,0 +1,176 @@
+# Conditional 3D latent diffusion (3D-LDM) + TCAV probe generation.
+# Contract: RESEARCH_AND_DESIGN_BLUEPRINT.md sections 0-5 and Appendix B.
+# Load with src.diffusion.common.load_ldm_config(path, profile="t4"|"p100"|"a100").
+
+experiment:
+  name: ldm_128_cn_mci_ad
+  seed: 42
+  output_dir: outputs/diffusion
+  profile: t4            # t4 | p100 | a100 (override with --profile)
+  device: auto
+
+data:
+  # Cohort A + B superset (5,971 visits), partitioned at the SUBJECT level.
+  master_split_path: data/diffusion/cohort_a_splits.json
+  longitudinal_manifest_path: data/diffusion/cohort_b_longitudinal_manifest.csv
+  # One row per original scan: subject_id,image_id,pipeline_version,template_sha256,
+  # status,volume_path,mask_path (paths relative to volume_root).
+  qc_index_path: data/diffusion/diffusion_qc_index.csv
+  volume_root: data/preprocessed_scans
+  file_pattern: "{subject_id}_preprocessed_128.nii.gz"      # baseline convention
+  mask_suffix: "_mask"                                      # companion {stem}_mask.nii.gz
+  index_path: outputs/diffusion/diffusion_index.json
+  morphometry_csv: null     # optional: image_id,HA,ECT,VE,THD,GCT,AA (validated measurements)
+  expected_shape: [128, 128, 128]
+  expected_spacing: [1.1926161, 1.4749262, 1.2387075]
+  spacing_tolerance: 0.03
+  orientation: RAS
+  normalization: none       # stored whole-grid z-score is kept as is (no min-max, no clipping)
+  reference_image: template/mni152.nii.gz
+  reference_grid_mode: same_fov
+  reference_fov_tolerance_mm: 0.1
+  template_sha256: dbbd4542823c1e2b12265c9b7e3cf959ee02ff7829bbf05cdcfbecc0013a00fa
+  pipeline_version: masked_rigid_affine_centroid_seed42_v4
+  allowed_splits: [train, val]          # test is never resolved, opened or hashed
+  expected_master_test_subjects: 247    # denylist size; set null for synthetic data
+  expected_visits: {train: 4232, val: 863, test: 876}   # informational, checked in the audit report
+  require_all_classes: true
+
+classes:
+  names: [CN, MCI, AD]
+  label_map: {CN: 0, EMCI: 1, LMCI: 1, MCI: 1, AD: 2}
+  num_classes: 3
+  null_index: 3             # CFG unconditional class embedding (== num_classes)
+
+atlas:
+  cerebra_path: data/atlas/CerebrA_MNI152_2009c_sym.nii.gz
+  cerebra_sha256: null      # pin after download (required by build_atlas_masks)
+  template_path: template/mni152.nii.gz
+  output_dir: data/atlas/masks_128
+  regions:
+    HA: [48, 99]
+    ECT: [36, 87]
+    VE: [41, 92]
+    THD: [5, 56]
+    GCT: [47, 98, 31, 82, 10, 61, 1, 52, 9, 60, 28, 79]
+    AA: [19, 70]
+
+model:
+  autoencoder:
+    channels: [16, 32, 64, 96]
+    num_res_blocks: [1, 1, 2, 2]
+    latent_channels: 4
+    norm_num_groups: 8
+    use_checkpoint: true
+  unet:
+    channels: [64, 96, 128]
+    num_res_blocks: [2, 2, 2]
+    attention_levels: [false, true, true]
+    num_head_channels: [32, 32, 32]
+    norm_num_groups: 8
+    cross_attention_dim: 64
+    transformer_num_layers: 1
+    num_class_embeds: 4     # num_classes + 1 null
+    upcast_attention: true
+    use_flash_attention: false
+  anatomy:
+    num_measurements: 6     # HA, ECT, VE, THD, GCT, AA
+    token_dim: 64           # 6 standardized values + 6 availability flags -> one token
+  scheduler:
+    num_train_timesteps: 1000
+    schedule: scaled_linear_beta
+    beta_start: 0.0015
+    beta_end: 0.0195
+
+latent:
+  grid: [16, 16, 16]
+  cache_dir: outputs/diffusion/latent_cache
+  stats_name: latent_stats.json
+  min_scale: 1.0e-6
+
+stage1:
+  epochs: 100
+  lr: 1.0e-4
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+  weight_decay: 1.0e-4
+  min_lr: 1.0e-6
+  warmup_updates: 500
+  grad_clip_norm: 1.0
+  edge_weight: 0.1
+  kl_weight: 1.0e-5
+  brain_weight: 2.0           # w = 1 + 2 * brain
+  val_every_epochs: 2
+  early_stopping_patience: 10
+  val_max_volumes: 64         # volumes scored for PSNR/SSIM per validation
+  num_workers: 2
+  patch_fallback: {enabled: false, size: 64, foreground_fraction: 0.5}
+
+stage2:
+  epochs: 200
+  lr: 1.0e-4
+  betas: [0.9, 0.999]
+  eps: 1.0e-8
+  weight_decay: 1.0e-4
+  min_lr: 1.0e-6
+  warmup_updates: 1000
+  grad_clip_norm: 1.0
+  ema_decay: 0.999
+  ema_start_updates: 500
+  cfg_dropout: {class_and_context: 0.10, morphology_only: 0.15}
+  val_every_epochs: 5
+  early_stopping_patience: 10
+  val_timesteps: [50, 200, 400, 600, 800]
+  val_seed: 1234
+  num_workers: 2
+
+sampling:
+  steps: 50
+  t_max: 589
+  guidance: 2.0
+  guidance_grid: [1.0, 2.0, 3.5]
+  pad_mm: 2.5
+  domain_dilation_voxels: 2
+  null_morphology: zeros
+
+probes:
+  per_concept_target: 200      # accepted unique volumes per group (>= 200)
+  groups: [HA, ECT, VE, THD, GCT, AA, PBM]
+  max_attempt_factor: 10       # attempts <= factor * target per group
+  batch_size: 10
+  anchor_split: train
+  anchor_class: CN
+  morphology_mode: class_only  # class_only | targeted (needs data.morphometry_csv)
+  concept_context: AD          # exploratory class context for class_only positives
+  neutral_context: CN
+  output_dir: outputs/diffusion/probes
+  export_dir: outputs/diffusion/probe_export
+  dose_percentile: {atrophy: 10, dilation: 90}
+
+qc:
+  psnr_min: 28.5
+  ssim_min: 0.88
+  offtarget_drift_max: 0.015
+  tissue_thresholds_z: {csf_max: -0.1, gm_max: 0.7}   # coarse fallback map; replace with SynthSeg
+  proxy_min_delta: 0.002         # support-region CSF-fraction change (exploratory directional gate)
+  pbm_max_abs_delta: 0.01
+  intensity_quantiles: [0.005, 0.995]
+  intensity_scale_volumes: 64
+  frechet: {n: 64, max_dim: 32, resamples: 200, quantile: 0.95}
+  fvd_max: 120.0                 # reported only with the pinned I3D extractor
+
+# Hardware admission targets (blueprint section 4). Admit only if max reserved
+# memory stays below 85 % of device memory with finite losses (see --preflight).
+profiles:
+  t4:
+    precision: fp16
+    stage1: {microbatch: 1, accumulation: 4}
+    stage2: {microbatch: 2, accumulation: 4}
+  p100:
+    precision: fp16        # falls back to fp32 + 64^3 patches if sm60 kernels fail
+    stage1: {microbatch: 1, accumulation: 4}
+    stage2: {microbatch: 1, accumulation: 8}
+  a100:
+    precision: bf16
+    stage1: {microbatch: 2, accumulation: 2}
+    stage2: {microbatch: 4, accumulation: 2}
